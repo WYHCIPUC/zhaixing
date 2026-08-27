@@ -14,7 +14,9 @@
     "test": "vitest run",
     "build:mobile": "vite build --config vite.config.mobile.ts",
     "cap:sync": "npm run build:mobile && cap sync android",
-    "cap:run": "npm run cap:sync && cap run android"
+    "cap:run": "npm run cap:sync && cap run android",
+    "build:mobile:bench": "vite build --config vite.config.mobile.ts --mode bench",
+    "build:mobile:diag": "vite build --config vite.config.mobile.ts --mode diag"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.0",

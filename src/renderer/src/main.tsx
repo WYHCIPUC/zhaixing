@@ -7,15 +7,17 @@ import { ensurePlatformApi } from './api/platform'
 ensurePlatformApi()
 
 // 开发/门禁专用页面（MM5 前随 bench 目录一起清理）
+// 入口：构建期 VITE_ENTRY=bench|diag（门禁 APK），或浏览器 hash #__bench / #__diag
+const entry = (import.meta.env.VITE_ENTRY as string | undefined) ?? ''
 const hash = window.location.hash
-if (hash === '#__bench') {
-  import('./bench/StarfieldBench').then(({ default: Bench }) => {
-    createRoot(document.getElementById('root')!).render(<Bench />)
-  })
-} else if (hash === '#__diag') {
-  import('./bench/DiagPage').then(({ default: Diag }) => {
-    createRoot(document.getElementById('root')!).render(<Diag />)
-  })
+const mount = (component: React.ComponentType): void => {
+  const Comp = component
+  createRoot(document.getElementById('root')!).render(<Comp />)
+}
+if (entry === 'bench' || hash === '#__bench') {
+  import('./bench/StarfieldBench').then(({ default: Bench }) => mount(Bench))
+} else if (entry === 'diag' || hash === '#__diag') {
+  import('./bench/DiagPage').then(({ default: Diag }) => mount(Diag))
 } else {
   createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
