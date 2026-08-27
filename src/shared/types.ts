@@ -226,6 +226,27 @@ export interface SpiritSpectrum {
   generated_at: string
 }
 
+// ---------- 微信读书 API 同步 ----------
+
+export interface WereadNotebook {
+  bookId: string
+  title: string
+  author: string
+  reviewCount: number
+  noteCount: number
+  bookmarkCount: number
+  sort: number
+}
+
+export interface WereadSyncReport {
+  bookTitle: string
+  highlightsAdded: number
+  highlightsSkipped: number
+  thoughtsAdded: number
+  thoughtsSkipped: number
+  ratingSet: boolean
+}
+
 // ---------- IPC API（window.api） ----------
 
 export interface StarPatch {
@@ -307,6 +328,10 @@ export interface ZhaixingApi {
   dailyCounts(): Promise<DailyCount[]>
   spiritSpectrum(refresh: boolean): Promise<SpiritSpectrum>
   saveImage(defaultName: string, dataUrl: string): Promise<string>
+
+  // 微信读书同步
+  wereadNotebooks(): Promise<WereadNotebook[]>
+  wereadSyncBook(bookId: string): Promise<WereadSyncReport>
 
   // 导出
   exportMarkdown(bookId: number | 'all'): Promise<string>

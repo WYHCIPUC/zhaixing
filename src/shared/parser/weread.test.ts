@@ -305,9 +305,9 @@ describe('parseWereadText · 书评块与想法锚点（剑来）', () => {
     const b = r.books[0]
     const anchor1 = b.highlights.find((h) => h.content === '落木千山天远大，澄江一道月分明。')
     expect(anchor1?.thoughts).toHaveLength(1)
-    const anchor2 = b.highlights.find((h) => h.content === '志意修则骄富贵，道义重则轻王公')
+    const anchor2 = b.highlights.find((h) => h.content === '志意修则骄富贵，道义重则轻王公。')
     expect(anchor2?.thoughts).toHaveLength(1)
-    const anchor3 = b.highlights.find((h) => h.content === '贱礼义而贵勇力，贫则为盗，富则为贼')
+    const anchor3 = b.highlights.find((h) => h.content === '贱礼义而贵勇力，贫则为盗，富则为贼。')
     expect(anchor3?.thoughts).toHaveLength(1)
   })
 })

@@ -40,6 +40,7 @@ import {
 } from './db/articles'
 import { askSky, draftNebulaArticle, rewriteQuote, socraticQuestion, type RewriteStyle } from './ai/weave'
 import { spiritSpectrum } from './ai/spirit'
+import { listNotebooks, syncBook, wereadKey } from './sync/weread'
 import {
   addStarsToNebula,
   bumpRevisit,
@@ -249,6 +250,27 @@ export function registerIpc(): void {
       fs.writeFileSync(path.join(dir, f.fileName), f.content, 'utf-8')
     }
     return dir
+  })
+
+  // ---------- 微信读书同步 ----------
+  ipcMain.handle('weread:notebooks', async () => {
+    const key = wereadKey()
+    if (!key) throw new Error('未配置微信读书 API Key（设置 → 微信读书同步）')
+    const items = await listNotebooks(key)
+    return items.map((n) => ({
+      bookId: n.bookId,
+      title: n.book?.title ?? '未知书名',
+      author: n.book?.author ?? '',
+      reviewCount: n.reviewCount ?? 0,
+      noteCount: n.noteCount ?? 0,
+      bookmarkCount: n.bookmarkCount ?? 0,
+      sort: n.sort ?? 0
+    }))
+  })
+  ipcMain.handle('weread:syncBook', async (_e, bookId: string) => {
+    const key = wereadKey()
+    if (!key) throw new Error('未配置微信读书 API Key（设置 → 微信读书同步）')
+    return syncBook(getDb(), key, bookId)
   })
 
   // ---------- 设置 / AI ----------

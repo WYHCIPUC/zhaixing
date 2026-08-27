@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { BookRecord } from '@shared/types'
 import ImportWizard from '../components/ImportWizard'
+import SyncDialog from '../components/SyncDialog'
 
 const BOOK_COLORS = [
   '#7dd3fc', '#a5b4fc', '#f0abfc', '#fda4af',
@@ -25,6 +26,7 @@ export default function BookshelfView({
 }) {
   const [books, setBooks] = useState<BookRecord[]>([])
   const [wizardOpen, setWizardOpen] = useState(false)
+  const [syncOpen, setSyncOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
@@ -58,6 +60,9 @@ export default function BookshelfView({
               ⬇ 导出全部 Markdown
             </button>
           )}
+          <button className="btn" onClick={() => setSyncOpen(true)}>
+            ⟳ 微信读书同步
+          </button>
           <button className="btn btn-primary" onClick={() => setWizardOpen(true)}>
             ✦ 导入笔记
           </button>
@@ -126,6 +131,13 @@ export default function BookshelfView({
               alert('没有新增星星（全部与已有笔记重复）')
             }
           }}
+        />
+      )}
+
+      {syncOpen && (
+        <SyncDialog
+          onClose={() => setSyncOpen(false)}
+          onSynced={onImported}
         />
       )}
     </div>

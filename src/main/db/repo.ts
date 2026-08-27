@@ -164,17 +164,42 @@ export function insertHighlight(
   bookId: number,
   chapter: string,
   chapterOrder: number,
-  content: string
+  content: string,
+  createdAt?: string
 ): { id: number; added: boolean } {
   const hash = starHash(bookId, chapter, content)
   const info = db
     .prepare(
-      `INSERT OR IGNORE INTO highlights(book_id, chapter, chapter_order, content, content_hash) VALUES (?, ?, ?, ?, ?)`
+      `INSERT OR IGNORE INTO highlights(book_id, chapter, chapter_order, content, content_hash, created_at)
+       VALUES (?, ?, ?, ?, ?, COALESCE(?, datetime('now','localtime')))`
     )
-    .run(bookId, chapter, chapterOrder, content, hash)
+    .run(bookId, chapter, chapterOrder, content, hash, createdAt ?? null)
   if (info.changes === 0) return { id: 0, added: false }
   reindexStar(db, Number(info.lastInsertRowid))
   return { id: Number(info.lastInsertRowid), added: true }
+}
+
+export function findHighlightId(db: DB, bookId: number, chapter: string, content: string): number | null {
+  const hash = starHash(bookId, chapter, content)
+  const row = db
+    .prepare(`SELECT id FROM highlights WHERE book_id = ? AND content_hash = ?`)
+    .get(bookId, hash) as { id: number } | undefined
+  return row?.id ?? null
+}
+
+export function insertThoughtIfNew(
+  db: DB,
+  highlightId: number,
+  content: string,
+  source: 'user' | 'ai',
+  thoughtDate?: string | null
+): boolean {
+  const exists = db
+    .prepare(`SELECT id FROM thoughts WHERE highlight_id = ? AND content = ?`)
+    .get(highlightId, content)
+  if (exists) return false
+  insertThought(db, highlightId, content, source, thoughtDate)
+  return true
 }
 
 export function insertThought(

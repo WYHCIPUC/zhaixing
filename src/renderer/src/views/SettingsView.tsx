@@ -3,6 +3,13 @@ import type { AiTestResult } from '@shared/types'
 
 const FIELDS: { key: string; label: string; placeholder: string; password?: boolean; hint?: string }[] = [
   {
+    key: 'weread_api_key',
+    label: '微信读书 API Key',
+    placeholder: 'wrk-…',
+    password: true,
+    hint: '用于一键同步书架笔记（划线/想法/评分自动入库），无需再手动复制导出'
+  },
+  {
     key: 'ai_base_url',
     label: 'API 地址 (base_url)',
     placeholder: 'https://open.bigmodel.cn/api/paas/v4',

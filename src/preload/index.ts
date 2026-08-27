@@ -65,6 +65,9 @@ const api = {
   spiritSpectrum: (refresh: boolean) => ipcRenderer.invoke('ai:spirit', refresh),
   saveImage: (defaultName: string, dataUrl: string) => ipcRenderer.invoke('app:saveImage', defaultName, dataUrl),
 
+  wereadNotebooks: () => ipcRenderer.invoke('weread:notebooks'),
+  wereadSyncBook: (bookId: string) => ipcRenderer.invoke('weread:syncBook', bookId),
+
   exportMarkdown: (bookId: number | 'all') => ipcRenderer.invoke('export:markdown', bookId),
 
   getSettings: () => ipcRenderer.invoke('settings:get'),
