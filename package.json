@@ -11,9 +11,13 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.web.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:mobile": "vite build --config vite.config.mobile.ts",
+    "cap:sync": "npm run build:mobile && cap sync android",
+    "cap:run": "npm run cap:sync && cap run android"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
     "@electron/rebuild": "^4.2.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/better-sqlite3": "^9.6.0",
@@ -30,6 +34,10 @@
     "vitest": "^4.1.11"
   },
   "dependencies": {
+    "@capacitor-community/sqlite": "^8.1.1",
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/filesystem": "^8.1.3",
     "better-sqlite3": "^12.11.1",
     "d3-force": "^3.0.0",
     "framer-motion": "^13.1.1",

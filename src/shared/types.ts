@@ -61,6 +61,7 @@ export interface ParsedBook {
   author: string
   chapters: string[]
   highlights: ParsedHighlight[]
+  short_review?: string // 来自「点评 / ◆ 日期 认为好看」块
 }
 
 export interface ParseResult {

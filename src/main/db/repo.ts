@@ -386,6 +386,10 @@ export function importParsed(
         booksAdded++
       }
       bookIds.push(book.id)
+      if (pb.short_review && !book.short_review) {
+        updateBook(db, book.id, { short_review: pb.short_review })
+        book.short_review = pb.short_review
+      }
       for (const ph of pb.highlights) {
         const order = pb.chapters.indexOf(ph.chapter)
         const res = insertHighlight(db, book.id, ph.chapter, order < 0 ? 0 : order, ph.content)

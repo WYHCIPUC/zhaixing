@@ -25,6 +25,8 @@ const HIGHLIGHT_PREFIX = /^>{1,2}\s?(.*)$/
 const THOUGHT_PREFIX = /^(?:\/\/+|想法\s*[:：]|笔记\s*[:：])\s*(.*)$/
 const AUTHOR_PREFIX = /^(?:作者|著者|author)\s*[:：]?\s*(.*)$/i
 const APP_THOUGHT_HEADER = /^◆\s*(\d{4}[年/.\-]\d{1,2}[月/.\-]\d{1,2}日?)\s*发表想法\s*$/
+const APP_RATING_HEADER =
+  /^◆\s*(\d{4}[年/.\-]\d{1,2}[月/.\-]\d{1,2}日?)?\s*(?:点评|书评|短评)?[，,]?\s*(认为好看|觉得一般|认为糟糕|觉得还行|认为不行)\s*$/
 const APP_ANCHOR = /^原文\s*[:：]\s?(.*)$/
 const PURE_NUMBER = /^\d{1,4}$/
 const FOOTER = /^--\s*来自微信读书\s*$/
@@ -71,11 +73,12 @@ function parseApp(lines: string[]): ParseResult {
     chapter: string
     authorPending: boolean
     seenCount: boolean
-    mode: 'idle' | 'thought' | 'anchor'
+    mode: 'idle' | 'thought' | 'anchor' | 'review'
     thoughtDate: string | null
     thoughtLines: string[]
     anchor: string
     thoughtChapter: string
+    reviewLines: string[]
   } = {
     book: null,
     chapter: '',
@@ -85,15 +88,24 @@ function parseApp(lines: string[]): ParseResult {
     thoughtDate: null,
     thoughtLines: [],
     anchor: '',
-    thoughtChapter: ''
+    thoughtChapter: '',
+    reviewLines: []
   }
 
   const structural = (l: string): boolean =>
-    /^《.+?》/.test(l) || /^◆/.test(l) || PURE_NUMBER.test(l) || FOOTER.test(l) || NOTE_COUNT.test(l)
+    /^《.+?》/.test(l) ||
+    /^◆/.test(l) ||
+    PURE_NUMBER.test(l) ||
+    FOOTER.test(l) ||
+    NOTE_COUNT.test(l) ||
+    CHAPTER_NAME.test(l)
 
   const finishThought = (): void => {
-    if (st.mode === 'idle') return
-    const content = st.thoughtLines.join('\n').trim()
+    if (st.mode !== 'thought' && st.mode !== 'anchor') return
+    const content = st.thoughtLines
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
     const anchorRaw = st.anchor.trim()
     const b = st.book
     if (b && content) {
@@ -129,13 +141,35 @@ function parseApp(lines: string[]): ParseResult {
     st.thoughtDate = null
   }
 
+  // 书评块（点评 / ◆ 日期 认为好看）→ 书籍短评
+  const finishReview = (): void => {
+    if (st.mode !== 'review') return
+    const content = st.reviewLines
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+    const b = st.book
+    if (b && content) {
+      b.short_review = b.short_review ? `${b.short_review}\n${content}` : content
+    }
+    st.reviewLines = []
+    st.mode = 'idle'
+  }
+
   for (const rawLine of lines) {
     const line = rawLine.trim()
-    if (!line) continue
+    if (!line) {
+      // 思考/书评块内的空行 = 段落分隔
+      if (st.mode === 'thought') st.thoughtLines.push('')
+      else if (st.mode === 'review') st.reviewLines.push('')
+      continue
+    }
 
     // 书名
     const titleMatch = line.match(/^《(.+?)》\s*[^《]*$/)
-    if (titleMatch && st.mode === 'idle') {
+    if (titleMatch) {
+      finishThought()
+      finishReview()
       const title = titleMatch[1].trim()
       const existing = books.find((x) => x.title === title)
       if (existing) {
@@ -158,12 +192,21 @@ function parseApp(lines: string[]): ParseResult {
     if (FOOTER.test(line) || NOTE_COUNT.test(line)) {
       st.seenCount = true
       finishThought()
+      finishReview()
       continue
     }
 
-    // 想法块内部
+    // 书评块 / 想法块内部
     if (st.mode !== 'idle') {
-      if (st.mode === 'thought') {
+      if (st.mode === 'review') {
+        if (structural(line)) {
+          finishReview()
+          // 落回主流程处理当前行
+        } else {
+          st.reviewLines.push(line)
+          continue
+        }
+      } else if (st.mode === 'thought') {
         const anchorMatch = line.match(APP_ANCHOR)
         if (anchorMatch) {
           st.anchor = anchorMatch[1]
@@ -205,12 +248,21 @@ function parseApp(lines: string[]): ParseResult {
       continue
     }
 
-    // ◆ 划线
+    // ◆ 日期 认为好看 / 觉得一般 …= 书评块（点评）
+    const ratingMatch = line.match(APP_RATING_HEADER)
+    if (ratingMatch) {
+      finishThought()
+      st.mode = 'review'
+      st.reviewLines = []
+      continue
+    }
+
+    // ◆ 划线（同一本书内内容完全相同的划线去重，微信读书常见重复导出）
     const appHighlight = line.match(/^◆\s?(.*)$/)
     if (appHighlight) {
       finishThought()
       const { text } = stripDateTail(appHighlight[1])
-      if (text) {
+      if (text && !b.highlights.some((h) => h.content === text)) {
         b.highlights.push({ content: text, chapter: st.chapter, thoughts: [] })
         if (st.chapter && !b.chapters.includes(st.chapter)) b.chapters.push(st.chapter)
       }
@@ -230,12 +282,19 @@ function parseApp(lines: string[]): ParseResult {
       continue
     }
 
-    // 其余普通行 = 章节标题（如「开场白 大江东去」）
+    // 缩进行 = 上一条划线的跨段续行（如《权力密码》样本中划线含多个自然段）
+    if (/^\s/.test(rawLine) && b.highlights.length > 0) {
+      b.highlights[b.highlights.length - 1].content += '\n' + line
+      continue
+    }
+
+    // 其余普通行 = 章节标题（如「开场白 大江东去」「第三章」）
     st.chapter = stripDateTail(line).text
     if (!b.chapters.includes(st.chapter)) b.chapters.push(st.chapter)
   }
 
   finishThought()
+  finishReview()
 
   for (const bk of [...books]) {
     if (bk.highlights.length === 0) {

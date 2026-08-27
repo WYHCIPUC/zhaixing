@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">摘星实录</string>
+    <string name="title_activity_main">摘星实录</string>
+    <string name="package_name">com.zhaixing.app</string>
+    <string name="custom_url_scheme">com.zhaixing.app</string>
+</resources>

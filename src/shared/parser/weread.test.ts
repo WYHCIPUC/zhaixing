@@ -188,3 +188,162 @@ describe('parseWereadText · App 复制格式（真实样本）', () => {
     expect(b.highlights.some((h) => h.content.includes('个笔记'))).toBe(false)
   })
 })
+
+// ================= 样本二：《中国式秘书》纯文字章节 =================
+
+const SECRETARY_SAMPLE = `《中国式秘书（全三册）》
+
+丁邦文
+28个笔记
+
+第三章
+
+◆ 。平常，冯开岭以为人谦虚、随和而著称，可往往就是这种外观谦逊的领导，内心里却城府很深
+
+第五章
+
+◆ 秘书职业有许多顾忌，快嘴快舌、多嘴多舌都是其中的重点。
+
+第九章
+
+◆ 送礼也得看菜吃饭、对症下药
+
+第三章
+
+◆ 所谓调整人，实际上就是调人与整人的合二而一。
+
+-- 来自微信读书`
+
+describe('parseWereadText · 纯文字章节（中国式秘书）', () => {
+  it('章节标题行正确识别', () => {
+    const r = parseWereadText(SECRETARY_SAMPLE)
+    expect(r.books).toHaveLength(1)
+    const b = r.books[0]
+    expect(b.author).toBe('丁邦文')
+    expect(b.highlights).toHaveLength(4)
+    expect(b.chapters).toContain('第三章')
+    expect(b.chapters).toContain('第五章')
+    expect(b.highlights[3].chapter).toBe('第三章')
+    expect(b.highlights.some((h) => h.content.includes('来自微信读书'))).toBe(false)
+  })
+})
+
+// ================= 样本三：《剑来》书评块与想法锚点 =================
+
+const JIANLAI_SAMPLE = `《剑来》
+
+烽火戏诸侯
+34个笔记
+
+点评
+
+◆ 2020/12/30 认为好看
+
+莫向外求，反求诸己
+
+我与我周旋久，我心光明
+
+第四百六十章 诸事皆宜，百无禁忌
+
+◆ 因为天地生养万物，并无偏私。
+
+第五百一十二章 明月当空（上）
+
+◆ 2020/09/01发表想法
+
+登快阁 宋 · 黄庭坚
+万里归船弄长笛，此心吾与白鸥盟
+
+原文：落木千山天远大，澄江一道月分明。
+
+第六百二十三章 宝瓶洲的现在和未来
+
+◆ 2020/09/26发表想法
+
+余光中先生的散文集也提到过
+
+原文：，人生如逆旅，我亦是行人
+
+◆ 人生如逆旅，我亦是行人
+
+第八百八十九章 锦上添花
+
+◆ 2020/11/08发表想法
+
+志意修则骄富贵
+摘自《荀子·修身》
+
+原文：志意修则骄富贵，道义重则轻王公。
+
+◆ 2020/11/08发表想法
+
+出自《荀子·乐论》
+
+原文：贱礼义而贵勇力，贫则为盗，富则为贼。
+
+-- 来自微信读书`
+
+describe('parseWereadText · 书评块与想法锚点（剑来）', () => {
+  it('「认为好看」点评块落入书籍短评', () => {
+    const r = parseWereadText(JIANLAI_SAMPLE)
+    const b = r.books[0]
+    expect(b.short_review).toBe('莫向外求，反求诸己\n\n我与我周旋久，我心光明')
+    expect(b.highlights.some((h) => h.content.includes('认为好看'))).toBe(false)
+  })
+
+  it('锚点前导标点归一化后与后续划线合并为一条', () => {
+    const r = parseWereadText(JIANLAI_SAMPLE)
+    const b = r.books[0]
+    const matches = b.highlights.filter((h) => h.content === '人生如逆旅，我亦是行人')
+    expect(matches).toHaveLength(1)
+    expect(matches[0].thoughts).toHaveLength(1)
+    expect(matches[0].thoughts![0].content).toContain('余光中')
+  })
+
+  it('想法锚点补建划线；连续两个想法块各自落位', () => {
+    const r = parseWereadText(JIANLAI_SAMPLE)
+    const b = r.books[0]
+    const anchor1 = b.highlights.find((h) => h.content === '落木千山天远大，澄江一道月分明。')
+    expect(anchor1?.thoughts).toHaveLength(1)
+    const anchor2 = b.highlights.find((h) => h.content === '志意修则骄富贵，道义重则轻王公')
+    expect(anchor2?.thoughts).toHaveLength(1)
+    const anchor3 = b.highlights.find((h) => h.content === '贱礼义而贵勇力，贫则为盗，富则为贼')
+    expect(anchor3?.thoughts).toHaveLength(1)
+  })
+})
+
+// ================= 样本四：《权力密码》缩进跨段划线 =================
+
+const POWER_SAMPLE = `《权力密码：当历史遇见经济学》
+
+王伟
+122个笔记
+
+第一章 前言 历史与「智慧经济」
+
+◆ 历史的价值，其实取决于你怎么看和看什么。
+
+第二章 权力，人所欲也
+
+◆ 所谓“权力”，说得直白点，就是你可以让别人去做他不喜欢做的事
+
+第六章 尾声
+
+◆ 知识不等于智慧，知识有书籍作为载体，我们只要肯去学。
+
+    在一次次对历史的解剖中，我相信智慧会在不知不觉间慢慢地渗入我们的头脑。
+
+-- 来自微信读书`
+
+describe('parseWereadText · 缩进跨段（权力密码）', () => {
+  it('缩进续行并入上一条划线，带空格章节标题正确识别', () => {
+    const r = parseWereadText(POWER_SAMPLE)
+    const b = r.books[0]
+    expect(b.author).toBe('王伟')
+    expect(b.highlights).toHaveLength(3)
+    const last = b.highlights[2]
+    expect(last.content).toContain('\n在一次次对历史的解剖中')
+    expect(last.chapter).toBe('第六章 尾声')
+    expect(b.chapters).toContain('第一章 前言 历史与「智慧经济」')
+  })
+})
