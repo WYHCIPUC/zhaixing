@@ -26,7 +26,7 @@ import {
   updateStar,
   updateThought
 } from './db/repo'
-import { parseWereadText } from './parser/weread'
+import { parseWereadText } from '@shared/parser/weread'
 import { buildExports } from './exporters/markdown'
 import { isAiConfigured, testAi, type AiConfig } from './ai/client'
 import { pickGems, runAnalysis } from './ai/pipeline'
