@@ -113,15 +113,19 @@ export async function testAi(cfg: AiConfig): Promise<{ ok: boolean; error?: stri
   }
 }
 
-export function vectorsToBlob(v: number[]): Buffer {
-  const buf = Buffer.alloc(v.length * 4)
-  for (let i = 0; i < v.length; i++) buf.writeFloatLE(v[i], i * 4)
+// Float32 LE 编码用 DataView，双端通用（WebView 无 Node Buffer）
+export function vectorsToBlob(v: number[]): Uint8Array {
+  const buf = new Uint8Array(v.length * 4)
+  const view = new DataView(buf.buffer)
+  for (let i = 0; i < v.length; i++) view.setFloat32(i * 4, v[i], true)
   return buf
 }
 
-export function blobToVectors(buf: Buffer): number[] {
+export function blobToVectors(buf: Uint8Array | ArrayBuffer): number[] {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf)
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   const v: number[] = []
-  for (let i = 0; i < buf.length / 4; i++) v.push(buf.readFloatLE(i * 4))
+  for (let i = 0; i < Math.floor(bytes.byteLength / 4); i++) v.push(view.getFloat32(i * 4, true))
   return v
 }
 

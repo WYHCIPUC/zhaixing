@@ -1,7 +1,7 @@
 import type { DB } from './connection'
 import type { HighlightRecord, LinkRecord, NebulaRecord, StarMapData, StarMapStar } from '@shared/types'
 import { listStars } from './repo'
-import { blobToVectors, cosine } from '../ai/client'
+import { blobToVectors, cosine } from '@shared/ai/client'
 
 // ---------- 星云 ----------
 

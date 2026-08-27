@@ -1,7 +1,7 @@
 import type { DB } from '../db/connection'
 import { allEmbeddings } from '../db/nebula'
 import { createArticle } from '../db/articles'
-import { chat, cosine, embed, type AiConfig } from './client'
+import { chat, cosine, embed, type AiConfig } from '@shared/ai/client'
 
 export interface AskSkyResult {
   answer: string

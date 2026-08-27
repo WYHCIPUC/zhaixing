@@ -1,6 +1,6 @@
 import type { DB } from '../db/connection'
 import { getSettings, setSettings } from '../db/repo'
-import { chat, type AiConfig } from './client'
+import { chat, type AiConfig } from '@shared/ai/client'
 
 export interface SpiritSpectrum {
   type_name: string

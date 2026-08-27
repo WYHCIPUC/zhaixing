@@ -28,7 +28,7 @@ import {
 } from './db/repo'
 import { parseWereadText } from '@shared/parser/weread'
 import { buildExports } from './exporters/markdown'
-import { isAiConfigured, testAi, type AiConfig } from './ai/client'
+import { isAiConfigured, testAi, type AiConfig } from '@shared/ai/client'
 import { pickGems, runAnalysis } from './ai/pipeline'
 import { createCapsule, getMeteor, listCapsules, markMeteorRevisited, nightFlightStars } from './db/meteor'
 import {

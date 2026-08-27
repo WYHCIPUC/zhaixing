@@ -11,7 +11,7 @@ import {
   upsertLink
 } from '../db/nebula'
 import { updateBook } from '../db/repo'
-import { chat, embed, type AiConfig } from './client'
+import { chat, embed, type AiConfig } from '@shared/ai/client'
 import type { AiRunReport } from '@shared/types'
 
 function jsonFromReply<T>(reply: string): T | null {
