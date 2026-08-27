@@ -1,0 +1,122 @@
+@import 'tailwindcss';
+
+:root {
+  --bg: #070b14;
+  --panel: rgba(255, 255, 255, 0.04);
+  --panel-strong: rgba(255, 255, 255, 0.07);
+  --line: rgba(255, 255, 255, 0.09);
+  --text: #dbe4f3;
+  --text-dim: #8b96ad;
+  --accent: #7dd3fc;
+  --gold: #fbbf24;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background:
+    radial-gradient(1200px 700px at 75% -10%, rgba(59, 89, 152, 0.22), transparent 60%),
+    radial-gradient(900px 500px at 10% 110%, rgba(94, 63, 122, 0.16), transparent 60%),
+    var(--bg);
+  color: var(--text);
+  font-family:
+    -apple-system, 'Segoe UI', 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 14px;
+  line-height: 1.65;
+  overflow: hidden;
+}
+
+.serif {
+  font-family: Georgia, 'Source Han Serif SC', 'Noto Serif SC', 'SimSun', serif;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 13px;
+  user-select: none;
+}
+.btn:hover {
+  background: var(--panel-strong);
+  border-color: rgba(125, 211, 252, 0.35);
+}
+.btn-primary {
+  background: linear-gradient(135deg, rgba(125, 211, 252, 0.25), rgba(129, 140, 248, 0.25));
+  border-color: rgba(125, 211, 252, 0.4);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, rgba(125, 211, 252, 0.4), rgba(129, 140, 248, 0.4));
+}
+.btn-danger:hover {
+  border-color: rgba(248, 113, 113, 0.5);
+  color: #fca5a5;
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: var(--text);
+  outline: none;
+  font-size: 13px;
+}
+.input:focus {
+  border-color: rgba(125, 211, 252, 0.5);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+  background-clip: content-box;
+}
+
+.star-mark {
+  color: var(--gold);
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+.twinkle {
+  animation: twinkle 2.6s ease-in-out infinite;
+}

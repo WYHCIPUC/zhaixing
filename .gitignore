@@ -1,0 +1,11 @@
+node_modules/
+out/
+dist/
+dist-mobile/
+.tscache/
+*.log
+.zcode/
+android/.gradle/
+android/app/build/
+android/local.properties
+*.keystore
