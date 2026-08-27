@@ -16,18 +16,10 @@ import type { AsyncSqliteExecutor } from './executor'
 
 export type Db = AsyncSqliteExecutor
 
-// ---------- 事务（双端通用：显式 BEGIN/COMMIT，同一连接） ----------
+// ---------- 事务（走各端原生事务 API，见 executor.transaction 注释） ----------
 
 export async function withTransaction<T>(db: Db, fn: () => Promise<T>): Promise<T> {
-  await db.exec('BEGIN')
-  try {
-    const out = await fn()
-    await db.exec('COMMIT')
-    return out
-  } catch (err) {
-    await db.exec('ROLLBACK').catch(() => {})
-    throw err
-  }
+  return db.transaction(fn)
 }
 
 async function lastId(db: Db): Promise<number> {

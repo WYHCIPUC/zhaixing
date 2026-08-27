@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
+import { Database } from 'lucide-react'
+import { toast } from 'sonner'
 import type { AiTestResult } from '@shared/types'
 
 const FIELDS: { key: string; label: string; placeholder: string; password?: boolean; hint?: string }[] = [
@@ -59,12 +62,14 @@ export default function SettingsView() {
 
   const backup = async (): Promise<void> => {
     const p = await window.api.backupNow()
-    alert(`已备份到：\n${p}`)
+    toast.success('数据库已备份', { description: p })
   }
 
   return (
     <div className="h-full overflow-y-auto px-10 py-8">
-      <h1 className="text-[22px] font-semibold">设置</h1>
+      <motion.h1 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-[22px] font-semibold">
+        设置
+      </motion.h1>
 
       <section className="panel mt-6 max-w-[720px] p-6">
         <h2 className="text-[15px] font-medium">
@@ -121,7 +126,7 @@ export default function SettingsView() {
         <h2 className="text-[15px] font-medium">数据</h2>
         <div className="mt-3 flex gap-2">
           <button className="btn" onClick={() => void backup()}>
-            立即备份数据库
+            <Database size={14} /> 立即备份数据库
           </button>
         </div>
         <h3 className="mt-5 text-[12.5px] text-[var(--text-dim)]">导入存档（{archives.length} 份 · 原文可重放）</h3>

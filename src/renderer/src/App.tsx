@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { Toaster } from 'sonner'
 import Sidebar from './components/Sidebar'
 import BookshelfView from './views/BookshelfView'
 import BookDetailView from './views/BookDetailView'
@@ -38,6 +39,18 @@ export default function App() {
 
   return (
     <div className="flex h-full">
+      <Toaster
+        theme="dark"
+        position="bottom-right"
+        gap={8}
+        toastOptions={{
+          style: {
+            background: 'rgba(11, 17, 32, 0.96)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            color: '#dbe4f3'
+          }
+        }}
+      />
       <Sidebar view={view} onNavigate={(v) => { setView(v); if (v !== 'shelf') setBookId(null) }} />
 
       <main className="flex-1 overflow-hidden">

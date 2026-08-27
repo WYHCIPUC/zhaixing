@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import { RefreshCw } from 'lucide-react'
 import type { WereadNotebook, WereadSyncReport } from '@shared/types'
 
 interface RowState {
@@ -60,11 +61,17 @@ export default function SyncDialog({
         className="panel flex max-h-[86vh] w-[760px] max-w-[92vw] flex-col overflow-hidden bg-[#0b1120]"
       >
         <header className="flex items-center justify-between border-b border-[var(--line)] px-6 py-4">
-          <div className="text-[15px] font-medium">
-            <span className="star-mark mr-2">⟳</span>
+          <div className="flex items-center gap-2 text-[15px] font-medium">
+            <motion.span
+              animate={loading ? { rotate: 360 } : {}}
+              transition={loading ? { duration: 1.2, repeat: Infinity, ease: 'linear' } : {}}
+              className="inline-flex"
+            >
+              <RefreshCw size={15} />
+            </motion.span>
             从微信读书同步
             {books.length > 0 && (
-              <span className="ml-2 text-[12px] text-[var(--text-dim)]">
+              <span className="ml-2 text-[12px] font-normal text-[var(--text-dim)]">
                 {books.length} 本有笔记 · 共 {books.reduce((a, b) => a + b.noteCount + b.reviewCount, 0)} 条
               </span>
             )}

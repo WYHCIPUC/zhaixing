@@ -181,8 +181,10 @@ function createMockApi(): ZhaixingApi {
   }
 
   // 兜底：未实现的方法返回空值 Promise，保证视图冒烟不崩
+  // 注意：放行 then，避免对象成为 thenable 导致 await 挂起
   return new Proxy(core, {
-    get(target, prop: string) {
+    get(target, prop) {
+      if (typeof prop !== 'string' || prop === 'then') return Reflect.get(target, prop)
       if (prop in target) return target[prop as keyof typeof target]
       return (...args: unknown[]) => {
         console.info(`[mock-api] ${prop}(${args.length} args) → 空值兜底`)

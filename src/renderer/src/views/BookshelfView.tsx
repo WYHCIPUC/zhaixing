@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import { Download, Plus, RefreshCw, Sparkles } from 'lucide-react'
+import { toast } from 'sonner'
 import type { BookRecord } from '@shared/types'
 import ImportWizard from '../components/ImportWizard'
 import SyncDialog from '../components/SyncDialog'
@@ -37,7 +39,9 @@ export default function BookshelfView({
     setExporting(true)
     try {
       const p = await window.api.exportMarkdown('all')
-      if (p) alert(`已导出到：\n${p}`)
+      if (p) toast.success('全部笔记已导出', { description: p })
+    } catch (err) {
+      toast.error('导出失败', { description: String(err) })
     } finally {
       setExporting(false)
     }
@@ -57,28 +61,34 @@ export default function BookshelfView({
         <div className="flex gap-2">
           {books.length > 0 && (
             <button className="btn" onClick={exportAll} disabled={exporting}>
-              ⬇ 导出全部 Markdown
+              <Download /> {exporting ? '导出中…' : '导出全部'}
             </button>
           )}
           <button className="btn" onClick={() => setSyncOpen(true)}>
-            ⟳ 微信读书同步
+            <RefreshCw /> 微信读书同步
           </button>
           <button className="btn btn-primary" onClick={() => setWizardOpen(true)}>
-            ✦ 导入笔记
+            <Plus /> 导入笔记
           </button>
         </div>
       </header>
 
       {books.length === 0 ? (
         <div className="mt-28 flex flex-col items-center text-center">
-          <div className="twinkle text-5xl star-mark">✦</div>
+          <motion.div
+            animate={{ scale: [1, 1.15, 1], opacity: [0.85, 1, 0.85] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            className="text-5xl text-[var(--gold)]"
+          >
+            <Sparkles size={44} strokeWidth={1.4} />
+          </motion.div>
           <div className="mt-5 text-[15px]">还没有星星</div>
           <div className="mt-2 max-w-[420px] text-[12.5px] leading-6 text-[var(--text-dim)]">
             在微信读书 App 里打开一本书 → 笔记 → 右上角分享/复制，<br />
-            把复制出的文本粘贴进导入向导，你的第一颗星就会亮起来。
+            把复制出的文本粘贴进导入向导，或者直接用 API 一键同步。
           </div>
           <button className="btn btn-primary mt-6" onClick={() => setWizardOpen(true)}>
-            粘贴我的第一份笔记
+            <Plus /> 粘贴我的第一份笔记
           </button>
         </div>
       ) : (
@@ -86,14 +96,19 @@ export default function BookshelfView({
           {books.map((b, i) => (
             <motion.button
               key={b.id}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.03 }}
+              transition={{ delay: Math.min(i * 0.045, 0.5), type: 'spring', stiffness: 260, damping: 24 }}
+              whileHover={{ y: -4 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => onOpenBook(b.id)}
-              className="panel group overflow-hidden p-0 text-left transition-transform hover:-translate-y-0.5"
+              className="panel panel-hover group overflow-hidden p-0 text-left"
             >
-              <div
-                className="h-[4px] w-full"
+              <motion.div
+                className="h-[4px] w-full origin-left"
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ delay: Math.min(i * 0.045, 0.5) + 0.15, duration: 0.5 }}
                 style={{ background: `linear-gradient(90deg, ${b.color}, transparent)` }}
               />
               <div className="p-4">
@@ -126,9 +141,11 @@ export default function BookshelfView({
             setWizardOpen(false)
             onImported()
             if (report.highlightsAdded > 0) {
-              alert(`摘到 ${report.highlightsAdded} 颗新星${report.highlightsSkipped > 0 ? `，跳过重复 ${report.highlightsSkipped} 条` : ''}`)
+              toast.success(`摘到 ${report.highlightsAdded} 颗新星`, {
+                description: report.highlightsSkipped > 0 ? `跳过重复 ${report.highlightsSkipped} 条` : undefined
+              })
             } else {
-              alert('没有新增星星（全部与已有笔记重复）')
+              toast.info('没有新增星星', { description: '全部与已有笔记重复' })
             }
           }}
         />

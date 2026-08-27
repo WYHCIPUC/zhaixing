@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { Image, Link2, Wand2 } from 'lucide-react'
+import { toast } from 'sonner'
 import type { LinkRecord, NebulaRecord, StarMapData, StarMapStar } from '@shared/types'
 import { StarfieldEngine } from '../starfield/engine'
 import StarDrawer from '../components/StarDrawer'
@@ -66,15 +68,19 @@ export default function SkyView() {
     setAiMsg('正在点亮你的星空…（embedding → 星云 → 双星 → 对撞 → 镇星之宝，视数据量需几分钟）')
     try {
       const r = await window.api.runAiAnalysis()
-      setAiMsg(
-        r.errors.length > 0 && r.nebulae === 0 && r.embedded === 0
-          ? `失败：${r.errors[0]}`
-          : `完成：嵌入 ${r.embedded} · 新星云 ${r.nebulae}（${r.nebulaStars} 星）· 双星建议 ${r.twins} · 对撞 ${r.collisions} · 镇星之宝 ${r.gems}` +
-              (r.errors.length ? ` · 部分失败 ${r.errors.length} 项` : '')
-      )
+      if (r.errors.length > 0 && r.nebulae === 0 && r.embedded === 0) {
+        toast.error('AI 分析失败', { description: r.errors[0] })
+        setAiMsg(`失败：${r.errors[0]}`)
+      } else {
+        const desc = `嵌入 ${r.embedded} · 新星云 ${r.nebulae}（${r.nebulaStars} 星）· 双星建议 ${r.twins} · 对撞 ${r.collisions} · 镇星之宝 ${r.gems}`
+        toast.success('AI 分析完成', { description: desc + (r.errors.length ? `（另有 ${r.errors.length} 项失败）` : '') })
+        setAiMsg(desc + (r.errors.length ? ` · 部分失败 ${r.errors.length} 项` : ''))
+      }
       await reload()
     } catch (err) {
-      setAiMsg(`失败：${String(err)}`)
+      const msg = err instanceof Error ? err.message : String(err)
+      toast.error('AI 分析失败', { description: msg })
+      setAiMsg(`失败：${msg}`)
     } finally {
       setAiRunning(false)
     }
@@ -123,22 +129,23 @@ export default function SkyView() {
               const engine = engineRef.current
               if (!engine) return
               const p = await window.api.saveImage('我的星空壁纸.png', engine.renderWallpaper(2560, 1440))
-              if (p) alert(`壁纸已保存：\n${p}`)
+              if (p) toast.success('壁纸已保存', { description: p })
             }}
           >
-            ⬛ 星空壁纸
+            <Image size={14} /> 星空壁纸
           </button>
           <button className="btn py-1" onClick={() => setReviewOpen(true)}>
-            连线审核{suggestedCount > 0 && <span className="star-mark">（{suggestedCount}）</span>}
+            <Link2 size={14} /> 连线审核
+            {suggestedCount > 0 && <span className="star-mark">（{suggestedCount}）</span>}
           </button>
           <button
             className={`btn py-1 ${selectMode ? 'btn-primary' : ''}`}
             onClick={() => setSelectMode(!selectMode)}
           >
-            {selectMode ? `圈选中 ${multiSel.length} 颗` : '⭘ 自造星云'}
+            <Wand2 size={14} /> {selectMode ? `圈选中 ${multiSel.length} 颗` : '自造星云'}
           </button>
           <button className="btn btn-primary py-1" disabled={aiRunning} onClick={() => void runAi()}>
-            {aiRunning ? 'AI 分析中…' : '✧ AI 分析'}
+            ✧ {aiRunning ? 'AI 分析中…' : 'AI 分析'}
           </button>
         </div>
       </header>

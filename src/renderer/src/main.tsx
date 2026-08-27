@@ -19,9 +19,12 @@ if (entry === 'bench' || hash === '#__bench') {
 } else if (entry === 'diag' || hash === '#__diag') {
   import('./bench/DiagPage').then(({ default: Diag }) => mount(Diag))
 } else {
-  createRoot(document.getElementById('root')!).render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
-  )
+  // 等 window.api 就绪再挂载（原生壳装配是异步的，过早挂载会查到空数据）
+  ensurePlatformApi().then(() => {
+    createRoot(document.getElementById('root')!).render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    )
+  })
 }

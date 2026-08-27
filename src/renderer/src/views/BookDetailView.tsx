@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
+import { toast } from 'sonner'
 import type { BookRecord, HighlightRecord, ThoughtRecord } from '@shared/types'
 import { colorFor } from './BookshelfView'
 
@@ -74,13 +75,14 @@ export default function BookDetailView({
 
   const exportBook = async (): Promise<void> => {
     const p = await window.api.exportMarkdown(bookId)
-    if (p) alert(`已导出到：\n${p}`)
+    if (p) toast.success('已导出 Markdown', { description: p })
   }
 
   const deleteBook = async (): Promise<void> => {
     if (!book) return
     if (!confirm(`删除《${book.title}》及全部划线？原始导入存档仍会保留。`)) return
     await window.api.deleteBook(bookId)
+    toast.success(`已删除《${book.title}》`)
     onChanged()
     onBack()
   }
@@ -104,8 +106,11 @@ export default function BookDetailView({
 
   const pickGem = async (): Promise<void> => {
     const n = await window.api.pickGems()
-    if (n === 0) alert('未配置 AI，或本书划线不足')
-    await load()
+    if (n === 0) toast.error('没能选出镇星之宝', { description: '请先在设置页配置 AI，并确保本书划线 ≥ 3 条' })
+    else {
+      toast.success('镇星之宝已加冕')
+      await load()
+    }
   }
 
   if (!book) {
@@ -128,15 +133,18 @@ export default function BookDetailView({
               <span className="ml-3 text-[13px] font-normal text-[var(--text-dim)]">{book.author}</span>
             </h1>
             <div className="mt-1.5 flex items-center gap-3 text-[12px] text-[var(--text-dim)]">
-              <span className="flex cursor-pointer" title="评分">
+              <span className="flex cursor-pointer items-center" title="评分">
                 {[1, 2, 3, 4, 5].map((n) => (
-                  <span
+                  <motion.span
                     key={n}
+                    whileHover={{ scale: 1.35, rotate: n % 2 === 0 ? 8 : -8 }}
+                    whileTap={{ scale: 0.85 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 15 }}
                     onClick={() => void saveRating(n === book.rating ? 0 : n)}
-                    className={n <= book.rating ? 'star-mark' : 'opacity-30 hover:opacity-70'}
+                    className={`inline-block ${n <= book.rating ? 'star-mark' : 'opacity-30 hover:opacity-70'}`}
                   >
                     ★
-                  </span>
+                  </motion.span>
                 ))}
               </span>
               <span>✦ {stars.length} 颗星</span>
@@ -220,11 +228,12 @@ export default function BookDetailView({
             </button>
             {!collapsed.has(chapter) && (
               <div className="space-y-3">
-                {list.map((s) => (
+                {list.map((s, i) => (
                   <StarCard
                     key={s.id}
                     star={s}
                     color={color}
+                    index={i}
                     selected={selected.has(s.id)}
                     onToggleSelect={() => toggleSelect(s.id)}
                     onToggleFavorite={() => void toggleFavorite(s)}
@@ -295,6 +304,7 @@ export default function BookDetailView({
 function StarCard({
   star,
   color,
+  index,
   selected,
   onToggleSelect,
   onToggleFavorite,
@@ -303,6 +313,7 @@ function StarCard({
 }: {
   star: HighlightRecord
   color: string
+  index: number
   selected: boolean
   onToggleSelect: () => void
   onToggleFavorite: () => void
@@ -351,6 +362,9 @@ function StarCard({
     <motion.div
       layout
       id={`star-${star.id}`}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index * 0.04, 0.4), type: 'spring', stiffness: 280, damping: 26 }}
       className={`panel group relative p-4 transition-colors ${selected ? 'border-[rgba(125,211,252,0.55)]' : ''}`}
     >
       <div
@@ -501,13 +515,16 @@ function StarCard({
           </div>
         </div>
 
-        <button
+        <motion.button
+          whileHover={{ scale: 1.3 }}
+          whileTap={{ scale: 0.8, rotate: 20 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 15 }}
           className={`shrink-0 text-[16px] ${star.favorite ? 'star-mark' : 'opacity-25 hover:opacity-70'}`}
           onClick={onToggleFavorite}
           title="星标收藏"
         >
           {star.favorite ? '★' : '☆'}
-        </button>
+        </motion.button>
       </div>
     </motion.div>
   )

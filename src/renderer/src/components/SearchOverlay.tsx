@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
+import { Search } from 'lucide-react'
 import type { SearchHit } from '@shared/types'
 
 export default function SearchOverlay({
@@ -46,19 +47,25 @@ export default function SearchOverlay({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-[var(--line)] px-5 py-3">
-          <input
-            ref={inputRef}
-            className="w-full bg-transparent text-[16px] outline-none"
-            placeholder="搜索你的星空…（划线与想法）"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => e.key === 'Escape' && onClose()}
-          />
+          <div className="flex items-center gap-3">
+            <Search size={16} className="shrink-0 text-[var(--text-dim)]" />
+            <input
+              ref={inputRef}
+              className="w-full bg-transparent text-[16px] outline-none"
+              placeholder="搜索你的星空…（划线与想法）"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && onClose()}
+            />
+          </div>
         </div>
         <div className="max-h-[52vh] overflow-y-auto p-2">
-          {hits.map((h) => (
-            <button
+          {hits.map((h, i) => (
+            <motion.button
               key={h.highlight_id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(i * 0.03, 0.25) }}
               className="block w-full rounded-lg px-4 py-3 text-left transition-colors hover:bg-white/5"
               onClick={() => {
                 onOpenBook(h.book_id)
@@ -69,7 +76,7 @@ export default function SearchOverlay({
               <div className="mt-1 text-[11px] text-[var(--text-dim)]">
                 《{h.book_title}》{h.chapter ? ` · ${h.chapter}` : ''}
               </div>
-            </button>
+            </motion.button>
           ))}
           {searched && hits.length === 0 && (
             <div className="py-10 text-center text-[13px] text-[var(--text-dim)]">夜空中没有匹配的星</div>

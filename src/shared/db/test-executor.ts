@@ -3,7 +3,7 @@
 // 在纯 Node（vitest）里加载会报 NODE_MODULE_VERSION 冲突
 // 仅测试引用（vitest / Node），禁止被 renderer / mobile 构建引用
 import { DatabaseSync } from 'node:sqlite'
-import type { AsyncSqliteExecutor } from './executor'
+import type { AsyncSqliteExecutor, RunResult } from './executor'
 
 export interface TestExecutor extends AsyncSqliteExecutor {
   raw: DatabaseSync
@@ -17,7 +17,18 @@ export function createTestExecutor(): TestExecutor {
     exec: async (sql) => {
       raw.exec(sql)
     },
-    run: async (sql, params = []) => raw.prepare(sql).run(...(params as never[])) as unknown as { changes: number },
-    query: async (sql, params = []) => raw.prepare(sql).all(...(params as never[])) as never
+    run: async (sql, params = []) => raw.prepare(sql).run(...(params as never[])) as unknown as RunResult,
+    query: async <T>(sql: string, params: unknown[] = []) => raw.prepare(sql).all(...(params as never[])) as T[],
+    transaction: async <T>(fn: () => Promise<T>): Promise<T> => {
+      raw.exec('BEGIN')
+      try {
+        const out = await fn()
+        raw.exec('COMMIT')
+        return out
+      } catch (err) {
+        raw.exec('ROLLBACK')
+        throw err
+      }
+    }
   }
 }

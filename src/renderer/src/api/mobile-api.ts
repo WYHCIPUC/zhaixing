@@ -135,8 +135,10 @@ export async function createMobileApi(db: Db): Promise<ZhaixingApi> {
   }
 
   // 兜底：MM2-MM4 的方法（星穹/流星/织星/AI 管线/星光节）返回空值，视图不崩
+  // 注意：必须放行 then/Symbol 属性，否则对象成为 thenable，await 它会永久挂起
   return new Proxy(core as unknown as ZhaixingApi, {
-    get(target, prop: string) {
+    get(target, prop) {
+      if (typeof prop !== 'string' || prop === 'then') return Reflect.get(target, prop)
       if (prop in target) return (target as unknown as Record<string, unknown>)[prop]
       return (...args: unknown[]) => {
         console.info(`[mobile-api] ${prop}(${args.length} args) 尚未实现（MM2-MM4）→ 空值兜底`)

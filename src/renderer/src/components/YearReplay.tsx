@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
+import { toast } from 'sonner'
 import type { StarMapStar } from '@shared/types'
 
 // 年度星空回放：延时摄影式回看星星如何一颗颗亮起
@@ -105,7 +106,7 @@ export default function YearReplay({ onClose }: { onClose: () => void }) {
             const canvas = canvasRef.current
             if (!canvas) return
             const p = await window.api.saveImage('我的星空.png', canvas.toDataURL('image/png'))
-            if (p) alert(`已保存：\n${p}`)
+            if (p) toast.success('已保存', { description: p })
           }}
         >
           ⬇ 存为图片

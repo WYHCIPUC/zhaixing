@@ -1,7 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import { animate, motion } from 'framer-motion'
 import type { DailyCount, SpiritSpectrum } from '@shared/types'
 import YearReplay from '../components/YearReplay'
+
+// 数字滚动
+function CountUp({ value }: { value: number }): React.ReactElement {
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    const controls = animate(0, value, {
+      duration: 0.9,
+      ease: [0.16, 1, 0.3, 1],
+      onUpdate: (v) => setN(Math.round(v))
+    })
+    return () => controls.stop()
+  }, [value])
+  return <>{n}</>
+}
 
 export default function StatsView() {
   const [overview, setOverview] = useState<Awaited<ReturnType<typeof window.api.overview>> | null>(null)
@@ -53,17 +67,27 @@ export default function StatsView() {
 
       {/* 总览 */}
       <div className="grid grid-cols-5 gap-3">
-        {[
-          ['书', overview?.bookCount],
-          ['星（划线）', overview?.highlightCount],
-          ['想法', overview?.thoughtCount],
-          ['星云', themes.length],
-          ['标签', overview?.tagCount]
-        ].map(([label, value]) => (
-          <div key={String(label)} className="panel px-4 py-3 text-center">
-            <div className="text-[22px] font-semibold text-[var(--accent)]">{value ?? '–'}</div>
+        {(
+          [
+            ['书', overview?.bookCount],
+            ['星（划线）', overview?.highlightCount],
+            ['想法', overview?.thoughtCount],
+            ['星云', themes.length],
+            ['标签', overview?.tagCount]
+          ] as [string, number | undefined][]
+        ).map(([label, value], i) => (
+          <motion.div
+            key={String(label)}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.06 }}
+            className="panel panel-hover px-4 py-3 text-center"
+          >
+            <div className="text-[24px] font-semibold text-[var(--accent)]">
+              {value === undefined ? '–' : <CountUp value={value} />}
+            </div>
             <div className="text-[11px] text-[var(--text-dim)]">{label}</div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
@@ -159,14 +183,14 @@ function HeatMap({ daily }: { daily: DailyCount[] }): React.ReactElement {
 
   return (
     <div className="flex gap-[3px] overflow-x-auto">
-      {weeks.map((col, i) => (
-        <div key={i} className="flex flex-col gap-[3px]">
-          {col.map((cell) => (
+      {weeks.map((col, w) => (
+        <div key={w} className="flex flex-col gap-[3px]">
+          {col.map((cell, d) => (
             <div
               key={cell.date}
               title={`${cell.date} · ${cell.count} 颗星`}
-              className="h-[11px] w-[11px] rounded-[2px]"
-              style={{ background: color(cell.count) }}
+              className="cell-in h-[11px] w-[11px] rounded-[2px]"
+              style={{ background: color(cell.count), animationDelay: `${(w * 7 + d) * 0.004}s` }}
             />
           ))}
         </div>
@@ -198,7 +222,16 @@ function Radar({ spectrum }: { spectrum: SpiritSpectrum['spectrum'] }): React.Re
           stroke="rgba(255,255,255,0.08)"
         />
       ))}
-      <polygon points={poly} fill="rgba(251,191,36,0.18)" stroke="rgba(251,191,36,0.8)" strokeWidth={1.5} />
+      <polygon
+        points={poly}
+        fill="rgba(251,191,36,0.18)"
+        stroke="rgba(251,191,36,0.8)"
+        strokeWidth={1.5}
+        style={{
+          transformOrigin: '100px 100px',
+          animation: 'radar-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both'
+        }}
+      />
       {spectrum.map((s, i) => {
         const [x, y] = pt(i, R + 18)
         return (

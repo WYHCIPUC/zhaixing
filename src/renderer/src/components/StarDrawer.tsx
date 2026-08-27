@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { toast } from 'sonner'
 import type { LinkRecord, NebulaRecord, SearchHit, StarMapStar } from '@shared/types'
 import { makeQuoteCard } from '../share/card'
 
@@ -174,7 +175,10 @@ export default function StarDrawer({
             <span className="serif">{rewriteText}</span>
             <button
               className="ml-2 text-[11px] text-[var(--accent)]"
-              onClick={() => void navigator.clipboard.writeText(rewriteText)}
+              onClick={() => {
+                void navigator.clipboard.writeText(rewriteText)
+                toast.success('已复制到剪贴板')
+              }}
             >
               复制
             </button>
@@ -197,7 +201,7 @@ export default function StarDrawer({
                 className="btn btn-primary py-1 text-[12px]"
                 onClick={async () => {
                   const p = await window.api.saveImage(`摘星 · ${star.book_title ?? ''}.png`, cardUrl)
-                  if (p) alert(`已保存：\n${p}`)
+                  if (p) toast.success('卡片已保存', { description: p })
                 }}
               >
                 ⬇ 保存 PNG
