@@ -7,7 +7,7 @@ export interface RunResult {
 }
 
 export interface AsyncSqliteExecutor {
-  exec(sql: string): Promise<void>
+  exec(sql: string, opts?: { noTx?: boolean }): Promise<void>
   run(sql: string, params?: unknown[]): Promise<RunResult>
   query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>
   // 事务：capacitor-executor 降级为顺序自动提交（插件原生事务在该平台不可靠，

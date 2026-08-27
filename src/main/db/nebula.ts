@@ -187,7 +187,7 @@ export function getStarMap(db: DB): StarMapData {
       stars.push({
         ...h,
         book_title: b.title,
-        book_color: bookMap.get(b.id)?.color ?? '#7dd3fc',
+        book_color: bookMap.get(b.id)?.color ?? '#e8963c',
         nebula_ids: nebByStar.get(h.id) ?? [],
         is_gem: gems.has(h.id)
       })

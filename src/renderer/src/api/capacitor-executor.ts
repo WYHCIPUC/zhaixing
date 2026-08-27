@@ -35,8 +35,9 @@ async function build(dbName: string): Promise<AsyncSqliteExecutor> {
   }
 
   return {
-    exec: async (sql) => {
-      check((await conn.execute(sql)) as CapResult)
+    exec: async (sql, opts) => {
+      // noTx：VACUUM 等语句不能在事务内执行（插件 execute 默认包事务）
+      check((await conn.execute(sql, !opts?.noTx)) as CapResult)
     },
     run: async (sql, params = []) => {
       const res = (await conn.run(sql, params as unknown[])) as CapResult

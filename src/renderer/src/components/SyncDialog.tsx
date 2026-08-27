@@ -54,11 +54,11 @@ export default function SyncDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#5b4a33]/30 backdrop-blur-sm">
       <motion.div
         initial={{ scale: 0.96, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="panel flex max-h-[86vh] w-[760px] max-w-[92vw] flex-col overflow-hidden bg-[#0b1120]"
+        className="panel flex max-h-[86vh] w-[760px] max-w-[92vw] flex-col overflow-hidden bg-[#fffdf8]"
       >
         <header className="flex items-center justify-between border-b border-[var(--line)] px-6 py-4">
           <div className="flex items-center gap-2 text-[15px] font-medium">
@@ -84,7 +84,7 @@ export default function SyncDialog({
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {loading && <div className="py-16 text-center text-[13px] text-[var(--text-dim)]">正在拉取笔记本概览…</div>}
           {error && (
-            <div className="rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-3 text-[12.5px] leading-6 text-red-300">
+            <div className="rounded-lg border border-red-400/50 bg-red-400/15 px-4 py-3 text-[12.5px] leading-6 text-red-600">
               {error}
               <div className="mt-1 text-[11.5px] opacity-80">请到 设置 → 微信读书同步 填入 API Key（wrk-…）</div>
             </div>
@@ -105,7 +105,7 @@ export default function SyncDialog({
                         {b.bookmarkCount > 0 ? ` · 书签 ${b.bookmarkCount}（暂不可导出）` : ''}
                       </div>
                       {st.message && (
-                        <div className={`mt-0.5 text-[11px] ${st.status === 'error' ? 'text-red-300' : 'text-emerald-300'}`}>
+                        <div className={`mt-0.5 text-[11px] ${st.status === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>
                           {st.message}
                         </div>
                       )}

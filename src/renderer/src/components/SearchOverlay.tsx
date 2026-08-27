@@ -39,11 +39,11 @@ export default function SearchOverlay({
   }, [q])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[12vh] backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-[#5b4a33]/30 pt-[12vh] backdrop-blur-sm" onClick={onClose}>
       <motion.div
         initial={{ scale: 0.97, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="panel w-[720px] max-w-[90vw] overflow-hidden bg-[#0b1120]"
+        className="panel w-[720px] max-w-[90vw] overflow-hidden bg-[#fffdf8]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-[var(--line)] px-5 py-3">
@@ -66,7 +66,7 @@ export default function SearchOverlay({
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(i * 0.03, 0.25) }}
-              className="block w-full rounded-lg px-4 py-3 text-left transition-colors hover:bg-white/5"
+              className="block w-full rounded-lg px-4 py-3 text-left transition-colors hover:bg-[rgba(146,116,67,0.08)]"
               onClick={() => {
                 onOpenBook(h.book_id)
                 onClose()

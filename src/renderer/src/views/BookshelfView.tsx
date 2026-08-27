@@ -7,8 +7,8 @@ import ImportWizard from '../components/ImportWizard'
 import SyncDialog from '../components/SyncDialog'
 
 const BOOK_COLORS = [
-  '#7dd3fc', '#a5b4fc', '#f0abfc', '#fda4af',
-  '#fcd34d', '#86efac', '#5eead4', '#fdba74'
+  '#f0a04b', '#e8b04b', '#f87171', '#fb923c',
+  '#eab308', '#fb7185', '#d97706', '#facc15'
 ]
 
 function colorFor(title: string): string {
@@ -48,7 +48,7 @@ export default function BookshelfView({
   }
 
   return (
-    <div className="h-full overflow-y-auto px-10 py-8">
+    <div className="h-full overflow-y-auto px-5 py-6 md:px-10 md:py-8">
       <header className="mb-7 flex items-center justify-between">
         <div>
           <h1 className="text-[22px] font-semibold">书架</h1>

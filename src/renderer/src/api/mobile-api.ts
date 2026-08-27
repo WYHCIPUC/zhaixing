@@ -32,6 +32,7 @@ import {
 } from '@shared/db/async-repo'
 import { fetchBookmarklist, fetchMyReviews, fetchNotebooks, type WereadNotebookItem } from '@shared/weread/api'
 import { isAiConfigured, testAi as aiTest, type AiConfig } from '@shared/ai/client'
+import { Filesystem } from '@capacitor/filesystem'
 
 // 对照桌面 buildExports（buildExports 依赖同步 DB，手机端此处按同格式异步编排）
 async function exportBookMarkdown(db: Db, bookId: number | 'all'): Promise<ExportedFile[]> {
@@ -129,8 +130,21 @@ export async function createMobileApi(db: Db): Promise<ZhaixingApi> {
     },
 
     backupNow: async (): Promise<string> => {
-      // MM1 后续任务接 Filesystem 插件复制 db 文件；先落占位避免误报成功
-      throw new Error('备份将在 MM1 后续任务中启用')
+      // 与桌面 backupDatabase 同语义：单份轮换备份到库同目录 zhaixing.backup.db。
+      // 路径取自 pragma_database_list（插件把库放在 /data/data/<pkg>/databases）。
+      // VACUUM INTO 不能覆盖已有文件，先删旧备份；VACUUM 不能在事务内，走 noTx。
+      const rows = await db.query<{ file: string }>(`SELECT file FROM pragma_database_list WHERE name = 'main'`)
+      const dbPath = rows[0]?.file
+      if (!dbPath) throw new Error('无法定位数据库文件')
+      const dir = dbPath.slice(0, dbPath.lastIndexOf('/'))
+      const backupPath = `${dir}/zhaixing.backup.db`
+      try {
+        await Filesystem.deleteFile({ path: backupPath })
+      } catch {
+        // 首次备份时旧文件不存在，忽略
+      }
+      await db.exec(`VACUUM INTO '${backupPath}'`, { noTx: true })
+      return backupPath
     }
   }
 

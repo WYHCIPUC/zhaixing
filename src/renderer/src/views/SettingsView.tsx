@@ -98,7 +98,7 @@ export default function SettingsView() {
             {testing ? '测试中…' : '测试连接'}
           </button>
           {testResult && (
-            <span className={`text-[12.5px] ${testResult.ok ? 'text-emerald-300' : 'text-red-300'}`}>
+            <span className={`text-[12.5px] ${testResult.ok ? 'text-emerald-600' : 'text-red-600'}`}>
               {testResult.ok ? '✓ 连接成功' : `✕ ${testResult.error}`}
             </span>
           )}
@@ -110,7 +110,7 @@ export default function SettingsView() {
         <label className="mt-3 flex cursor-pointer items-center gap-3 text-[13px]">
           <input
             type="checkbox"
-            className="accent-sky-300"
+            className="accent-amber-500"
             checked={values.socratic_enabled === '1'}
             onChange={(e) => {
               const next = { ...values, socratic_enabled: e.target.checked ? '1' : '0' }

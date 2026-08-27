@@ -16,8 +16,7 @@ export function createTestExecutor(): TestExecutor {
     raw,
     exec: async (sql) => {
       raw.exec(sql)
-    },
-    run: async (sql, params = []) => raw.prepare(sql).run(...(params as never[])) as unknown as RunResult,
+    },    run: async (sql, params = []) => raw.prepare(sql).run(...(params as never[])) as unknown as RunResult,
     query: async <T>(sql: string, params: unknown[] = []) => raw.prepare(sql).all(...(params as never[])) as T[],
     transaction: async <T>(fn: () => Promise<T>): Promise<T> => {
       raw.exec('BEGIN')

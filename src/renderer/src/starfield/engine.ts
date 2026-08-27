@@ -46,8 +46,8 @@ function makeSprite(color: string): HTMLCanvasElement {
   c.height = 64
   const g = c.getContext('2d')!
   const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32)
-  grad.addColorStop(0, 'rgba(255,255,255,0.95)')
-  grad.addColorStop(0.18, color)
+  grad.addColorStop(0, colorWithAlpha(color, 1))
+  grad.addColorStop(0.22, colorWithAlpha(color, 0.6))
   grad.addColorStop(0.45, colorWithAlpha(color, 0.35))
   grad.addColorStop(1, 'rgba(0,0,0,0)')
   g.fillStyle = grad
@@ -223,7 +223,7 @@ export class StarfieldEngine {
     c.width = width
     c.height = height
     const g = c.getContext('2d')!
-    g.fillStyle = '#070b14'
+    g.fillStyle = '#faf5ec'
     g.fillRect(0, 0, width, height)
 
     if (this.nodes.length === 0) return c.toDataURL('image/png')
@@ -254,7 +254,7 @@ export class StarfieldEngine {
           ? 'rgba(248,113,113,0.25)'
           : e.kind === 'manual'
             ? 'rgba(251,191,36,0.28)'
-            : 'rgba(125,211,252,0.18)'
+            : 'rgba(217,122,30,0.18)'
       g.lineWidth = 1.5
       g.beginPath()
       g.moveTo(sx(a), sy(a))
@@ -268,7 +268,7 @@ export class StarfieldEngine {
     }
     g.globalCompositeOperation = 'source-over'
     g.font = "22px 'Microsoft YaHei UI', sans-serif"
-    g.fillStyle = 'rgba(139,150,173,0.7)'
+    g.fillStyle = 'rgba(146,116,67,0.7)'
     g.fillText('✦ 摘星实录 · 我的阅读星空', 40, height - 36)
     return c.toDataURL('image/png')
   }
@@ -298,7 +298,7 @@ export class StarfieldEngine {
       const y = rand() * h
       const r = rand() * 1.1 + 0.2
       const a = rand() * 0.35 + 0.06
-      g.fillStyle = `rgba(220,230,255,${a})`
+      g.fillStyle = `rgba(196,148,74,${a})`
       g.beginPath()
       g.arc(x, y, r, 0, Math.PI * 2)
       g.fill()
@@ -398,10 +398,10 @@ export class StarfieldEngine {
       const sb = this.screenOf(b)
       ctx.strokeStyle =
         e.kind === 'collision'
-          ? 'rgba(248,113,113,0.28)'
+          ? 'rgba(220,80,80,0.42)'
           : e.kind === 'manual'
-            ? 'rgba(251,191,36,0.3)'
-            : 'rgba(125,211,252,0.2)'
+            ? 'rgba(180,110,10,0.35)'
+            : 'rgba(217,122,30,0.2)'
       ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(sa.x, sa.y)
@@ -424,7 +424,7 @@ export class StarfieldEngine {
       }
       if (n.star.is_gem) {
         ctx.globalAlpha = 0.9
-        ctx.strokeStyle = 'rgba(251,191,36,0.8)'
+        ctx.strokeStyle = 'rgba(180,110,10,0.9)'
         ctx.lineWidth = 1
         ctx.beginPath()
         ctx.arc(s.x, s.y, n.r * this.cam.k + 6, 0, Math.PI * 2)
@@ -432,14 +432,14 @@ export class StarfieldEngine {
       }
       if (this.multiSelected.has(n.id)) {
         ctx.globalAlpha = 1
-        ctx.strokeStyle = 'rgba(125,211,252,1)'
+        ctx.strokeStyle = 'rgba(217,122,30,1)'
         ctx.beginPath()
         ctx.arc(s.x, s.y, n.r * this.cam.k + 5, 0, Math.PI * 2)
         ctx.stroke()
       }
       if (n.id === this.selectedId) {
         ctx.globalAlpha = 1
-        ctx.strokeStyle = 'rgba(255,255,255,0.85)'
+        ctx.strokeStyle = 'rgba(120,70,10,0.85)'
         ctx.beginPath()
         ctx.arc(s.x, s.y, n.r * this.cam.k + 4, 0, Math.PI * 2)
         ctx.stroke()

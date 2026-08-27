@@ -36,7 +36,7 @@ export default function YearReplay({ onClose }: { onClose: () => void }) {
       const render = (t: number): void => {
         g.save()
         g.scale(dpr, dpr)
-        g.fillStyle = '#070b14'
+        g.fillStyle = '#fdf8ef'
         g.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight)
         const w = canvas.clientWidth
         const h = canvas.clientHeight
@@ -48,15 +48,15 @@ export default function YearReplay({ onClose }: { onClose: () => void }) {
           const y = it.y * (h - 80) + 40
           const size = it.r * 6 * age * tw
           const grad = g.createRadialGradient(x, y, 0, x, y, size)
-          grad.addColorStop(0, 'rgba(255,255,255,0.9)')
-          grad.addColorStop(0.3, 'rgba(125,211,252,0.5)')
+          grad.addColorStop(0, 'rgba(217,122,30,0.9)')
+          grad.addColorStop(0.3, 'rgba(217,122,30,0.5)')
           grad.addColorStop(1, 'rgba(0,0,0,0)')
           g.fillStyle = grad
           g.beginPath()
           g.arc(x, y, size, 0, Math.PI * 2)
           g.fill()
         }
-        g.fillStyle = 'rgba(139,150,173,0.9)'
+        g.fillStyle = 'rgba(146,116,67,0.9)'
         g.font = '28px sans-serif'
         g.fillText(`${String(Math.min(12, Math.floor(t) + 1)).padStart(2, '0')} 月`, 40, h - 36)
         g.restore()
@@ -84,7 +84,7 @@ export default function YearReplay({ onClose }: { onClose: () => void }) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-[#04060d]"
+      className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-[#fdf8ef]"
       onClick={onClose}
     >
       <div className="mb-4 text-[13px] tracking-widest text-[var(--text-dim)]">你的星空，是这样亮起来的</div>

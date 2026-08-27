@@ -10,6 +10,7 @@ import MeteorView from './views/MeteorView'
 import WeaveView from './views/WeaveView'
 import StatsView from './views/StatsView'
 import SearchOverlay from './components/SearchOverlay'
+import { MobileBottomNav, MobileTopBar } from './components/MobileChrome'
 
 export type ViewKey = 'shelf' | 'sky' | 'meteor' | 'weave' | 'stats' | 'settings'
 
@@ -38,22 +39,25 @@ export default function App() {
   }, [])
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full flex-col md:flex-row">
       <Toaster
-        theme="dark"
-        position="bottom-right"
+        theme="light"
+        position="bottom-center"
         gap={8}
         toastOptions={{
           style: {
-            background: 'rgba(11, 17, 32, 0.96)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            color: '#dbe4f3'
+            background: 'rgba(255, 253, 248, 0.97)',
+            border: '1px solid rgba(146,116,67,0.3)',
+            color: '#43382b'
           }
         }}
       />
-      <Sidebar view={view} onNavigate={(v) => { setView(v); if (v !== 'shelf') setBookId(null) }} />
+      <div className="hidden md:block">
+        <Sidebar view={view} onNavigate={(v) => { setView(v); if (v !== 'shelf') setBookId(null) }} />
+      </div>
+      <MobileTopBar onSearch={() => setSearchOpen(true)} />
 
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-hidden pb-[56px] md:pb-0">
         <AnimatePresence mode="wait">
           <motion.div
             key={view + (bookId ?? '')}
@@ -77,6 +81,8 @@ export default function App() {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      <MobileBottomNav view={view} onNavigate={(v) => { setView(v); if (v !== 'shelf') setBookId(null) }} />
 
       {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} onOpenBook={openBook} />}
     </div>

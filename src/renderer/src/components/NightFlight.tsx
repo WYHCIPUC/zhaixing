@@ -41,14 +41,14 @@ export default function NightFlight({ onClose }: { onClose: () => void }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-[#04060d]"
+      className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-gradient-to-b from-[#fff8ec] to-[#fdecd2]"
     >
       {/* 背景微星 */}
       <div className="pointer-events-none absolute inset-0 opacity-60">
         {Array.from({ length: 40 }).map((_, i) => (
           <span
             key={i}
-            className="absolute rounded-full bg-white twinkle"
+            className="absolute rounded-full bg-[#d9930d] twinkle"
             style={{
               left: `${(i * 37) % 100}%`,
               top: `${(i * 53) % 100}%`,

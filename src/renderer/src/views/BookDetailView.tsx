@@ -255,7 +255,7 @@ export default function BookDetailView({
         <motion.div
           initial={{ y: 40, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-[rgba(125,211,252,0.4)] bg-[#0b1120] px-5 py-2.5 shadow-xl"
+          className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-[rgba(217,122,30,0.4)] bg-[#fffdf8] px-5 py-2.5 shadow-xl"
         >
           <span className="text-[13px]">已选 {selected.size} 颗星</span>
           <button className="btn btn-primary py-1" disabled={selected.size < 2} onClick={beginMerge}>
@@ -269,11 +269,11 @@ export default function BookDetailView({
 
       {/* 合并对话框 */}
       {mergeText !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#5b4a33]/30 backdrop-blur-sm">
           <motion.div
             initial={{ scale: 0.96, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="panel w-[640px] bg-[#0b1120] p-6"
+            className="panel w-[640px] bg-[#fffdf8] p-6"
           >
             <div className="text-[15px] font-medium">合并 {selected.size} 颗星</div>
             <p className="mt-1 text-[12px] text-[var(--text-dim)]">
@@ -365,7 +365,7 @@ function StarCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.04, 0.4), type: 'spring', stiffness: 280, damping: 26 }}
-      className={`panel group relative p-4 transition-colors ${selected ? 'border-[rgba(125,211,252,0.55)]' : ''}`}
+      className={`panel group relative p-4 transition-colors ${selected ? 'border-[rgba(217,122,30,0.55)]' : ''}`}
     >
       <div
         className="absolute bottom-2 left-0 top-2 w-[3px] rounded-full opacity-50"
@@ -374,7 +374,7 @@ function StarCard({
       <div className="flex items-start gap-3 pl-2">
         <input
           type="checkbox"
-          className="mt-1.5 cursor-pointer accent-sky-300"
+          className="mt-1.5 cursor-pointer accent-amber-500"
           checked={selected}
           onChange={onToggleSelect}
           title="选中以便合并"
@@ -448,7 +448,7 @@ function StarCard({
                           改
                         </button>
                         <button
-                          className="hover:text-red-300"
+                          className="hover:text-red-600"
                           onClick={async () => {
                             await window.api.deleteThought(t.id)
                             onChanged()
@@ -508,7 +508,7 @@ function StarCard({
               <button className="opacity-0 transition-opacity hover:text-[var(--accent)] group-hover:opacity-100" onClick={() => setEditing(true)}>
                 编辑
               </button>
-              <button className="opacity-0 transition-opacity hover:text-red-300 group-hover:opacity-100" onClick={onDelete}>
+              <button className="opacity-0 transition-opacity hover:text-red-600 group-hover:opacity-100" onClick={onDelete}>
                 删除
               </button>
             </span>

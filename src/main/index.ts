@@ -11,7 +11,7 @@ function createWindow(): void {
     minWidth: 1080,
     minHeight: 700,
     title: '摘星实录',
-    backgroundColor: '#070b14',
+    backgroundColor: '#faf5ec',
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.mjs'),

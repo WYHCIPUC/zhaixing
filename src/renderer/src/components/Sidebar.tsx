@@ -27,7 +27,7 @@ export default function Sidebar({
   }, [view])
 
   return (
-    <aside className="flex w-[210px] shrink-0 flex-col border-r border-[var(--line)] bg-black/20 px-3 py-5">
+    <aside className="flex w-[210px] shrink-0 flex-col border-r border-[var(--line)] bg-[#f4ead8]/70 px-3 py-5">
       <div className="mb-8 px-2">
         <motion.div
           className="text-[19px] font-semibold tracking-wide"
@@ -56,7 +56,7 @@ export default function Sidebar({
                 <motion.span
                   layoutId="nav-active"
                   transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                  className="absolute inset-0 rounded-lg bg-[rgba(125,211,252,0.12)]"
+                  className="absolute inset-0 rounded-lg bg-[rgba(217,122,30,0.12)]"
                 />
               )}
               <motion.span

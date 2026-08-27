@@ -11,9 +11,9 @@ export function makeQuoteCard(star: HighlightRecord & { book_title?: string }): 
 
   // 背景：夜空渐变 + 星尘
   const bg = g.createLinearGradient(0, 0, W, H)
-  bg.addColorStop(0, '#0a1022')
-  bg.addColorStop(0.55, '#0d1430')
-  bg.addColorStop(1, '#1a1033')
+  bg.addColorStop(0, '#fdf6ea')
+  bg.addColorStop(0.55, '#fbeed6')
+  bg.addColorStop(1, '#f6e0be')
   g.fillStyle = bg
   g.fillRect(0, 0, W, H)
   let seed = star.id * 2654435761
@@ -25,19 +25,19 @@ export function makeQuoteCard(star: HighlightRecord & { book_title?: string }): 
     const x = rand() * W
     const y = rand() * H
     const r = rand() * 1.6 + 0.3
-    g.fillStyle = `rgba(220,230,255,${rand() * 0.5 + 0.08})`
+    g.fillStyle = `rgba(196,148,74,${rand() * 0.5 + 0.08})`
     g.beginPath()
     g.arc(x, y, r, 0, Math.PI * 2)
     g.fill()
   }
   // 主星
   const glow = g.createRadialGradient(W / 2, H * 0.24, 0, W / 2, H * 0.24, 200)
-  glow.addColorStop(0, 'rgba(251,191,36,0.5)')
+  glow.addColorStop(0, 'rgba(217,122,30,0.45)')
   glow.addColorStop(0.25, 'rgba(251,191,36,0.12)')
   glow.addColorStop(1, 'rgba(0,0,0,0)')
   g.fillStyle = glow
   g.fillRect(W / 2 - 220, H * 0.24 - 220, 440, 440)
-  g.fillStyle = '#fde68a'
+  g.fillStyle = '#e8963c'
   g.beginPath()
   g.arc(W / 2, H * 0.24, 7, 0, Math.PI * 2)
   g.fill()
@@ -46,7 +46,7 @@ export function makeQuoteCard(star: HighlightRecord & { book_title?: string }): 
   const quote = star.content
   const fontSize = quote.length > 120 ? 40 : quote.length > 60 ? 48 : 56
   g.font = `${fontSize}px Georgia, 'Source Han Serif SC', 'Noto Serif SC', serif`
-  g.fillStyle = '#e8eefb'
+  g.fillStyle = '#3f3427'
   const maxWidth = W - 200
   const lines: string[] = []
   let line = ''
@@ -68,10 +68,10 @@ export function makeQuoteCard(star: HighlightRecord & { book_title?: string }): 
 
   // 出处与署名
   g.font = "26px 'Microsoft YaHei UI', 'PingFang SC', sans-serif"
-  g.fillStyle = 'rgba(139,150,173,0.95)'
+  g.fillStyle = 'rgba(146,116,67,0.95)'
   g.fillText(`——《${star.book_title ?? ''}》`, 100, Math.min(y + 60, H - 170))
   g.font = "22px 'Microsoft YaHei UI', 'PingFang SC', sans-serif"
-  g.fillStyle = 'rgba(251,191,36,0.8)'
+  g.fillStyle = 'rgba(192,122,21,0.9)'
   g.fillText('✦ 摘星实录 · 我在书页里摘下的星', 100, H - 90)
 
   return c.toDataURL('image/png')

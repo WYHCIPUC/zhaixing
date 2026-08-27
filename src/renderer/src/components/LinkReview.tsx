@@ -37,7 +37,7 @@ export default function LinkReview({
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 460, opacity: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-      className="absolute right-0 top-0 z-40 flex h-full w-[460px] max-w-[50vw] flex-col overflow-hidden border-l border-[var(--line)] bg-[#0b1120f5]"
+      className="absolute right-0 top-0 z-40 flex h-full w-[460px] max-w-[50vw] flex-col overflow-hidden border-l border-[var(--line)] bg-[#fffdf6f5]"
     >
       <header className="flex items-center justify-between border-b border-[var(--line)] px-5 py-3">
         <div className="text-[14px] font-medium">
@@ -61,7 +61,7 @@ export default function LinkReview({
           return (
             <div key={l.id} className="panel p-4">
               <div className="flex items-center gap-2 text-[11.5px]">
-                <span className={l.kind === 'collision' ? 'text-red-300' : 'text-[var(--accent)]'}>
+                <span className={l.kind === 'collision' ? 'text-red-600' : 'text-[var(--accent)]'}>
                   {m.icon} {m.label}
                 </span>
                 {l.sim !== null && <span className="text-[var(--text-dim)]">相似 {(l.sim * 100).toFixed(0)}%</span>}
@@ -82,7 +82,7 @@ export default function LinkReview({
                 </button>
               ))}
               {l.note && (
-                <div className={`mt-2 rounded-md px-2 py-1 text-[11.5px] ${l.kind === 'collision' ? 'bg-red-400/10 text-red-200' : 'bg-white/5 text-[var(--text-dim)]'}`}>
+                <div className={`mt-2 rounded-md px-2 py-1 text-[11.5px] ${l.kind === 'collision' ? 'bg-red-400/15 text-red-700' : 'bg-[rgba(146,116,67,0.08)] text-[var(--text-dim)]'}`}>
                   {l.note}
                 </div>
               )}

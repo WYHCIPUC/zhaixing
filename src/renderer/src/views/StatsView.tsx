@@ -106,12 +106,12 @@ export default function StatsView() {
             {themes.map((t) => (
               <div key={t.name} className="flex items-center gap-2 text-[12px]">
                 <span className="w-24 truncate text-right text-[var(--text-dim)]">{t.name}</span>
-                <div className="h-3 flex-1 overflow-hidden rounded-full bg-white/5">
+                <div className="h-3 flex-1 overflow-hidden rounded-full bg-[rgba(146,116,67,0.08)]">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${(t.count / maxTheme) * 100}%` }}
                     transition={{ duration: 0.6 }}
-                    className="h-full rounded-full bg-gradient-to-r from-[rgba(125,211,252,0.7)] to-[rgba(167,139,250,0.7)]"
+                    className="h-full rounded-full bg-gradient-to-r from-[rgba(217,122,30,0.7)] to-[rgba(167,139,250,0.7)]"
                   />
                 </div>
                 <span className="w-6 text-[var(--text-dim)]">{t.count}</span>
@@ -235,7 +235,7 @@ function Radar({ spectrum }: { spectrum: SpiritSpectrum['spectrum'] }): React.Re
       {spectrum.map((s, i) => {
         const [x, y] = pt(i, R + 18)
         return (
-          <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill="rgba(139,150,173,1)">
+          <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill="rgba(146,116,67,1)">
             {s.name}
           </text>
         )

@@ -57,11 +57,11 @@ export default function ImportWizard({
     parsed?.books.reduce((a, b) => a + b.highlights.reduce((x, h) => x + h.thoughts.length, 0), 0) ?? 0
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#5b4a33]/30 backdrop-blur-sm">
       <motion.div
         initial={{ scale: 0.96, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="panel flex max-h-[88vh] w-[820px] max-w-[92vw] flex-col overflow-hidden bg-[#0b1120]"
+        className="panel flex max-h-[88vh] w-[820px] max-w-[92vw] flex-col overflow-hidden bg-[#fffdf8]"
       >
         <header className="flex items-center justify-between border-b border-[var(--line)] px-6 py-4">
           <div className="text-[15px] font-medium">
@@ -74,7 +74,7 @@ export default function ImportWizard({
         </header>
 
         <div className="flex-1 overflow-y-auto px-6 py-5">
-          {error && <div className="mb-3 rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-2 text-[12.5px] text-red-300">{error}</div>}
+          {error && <div className="mb-3 rounded-lg border border-red-400/50 bg-red-400/15 px-4 py-2 text-[12.5px] text-red-600">{error}</div>}
 
           {!parsed && !report && (
             <>
@@ -112,7 +112,7 @@ export default function ImportWizard({
 
           {parsed && !report && (
             <>
-              <div className="mb-4 flex flex-wrap items-center gap-4 rounded-lg border border-[var(--line)] bg-black/20 px-4 py-2.5 text-[12.5px]">
+              <div className="mb-4 flex flex-wrap items-center gap-4 rounded-lg border border-[var(--line)] bg-[#f4ead8]/70 px-4 py-2.5 text-[12.5px]">
                 <span>
                   识别到 <b className="text-[var(--accent)]">{parsed.books.length}</b> 本书
                 </span>
@@ -128,7 +128,7 @@ export default function ImportWizard({
               </div>
 
               {parsed.warnings.length > 0 && (
-                <div className="mb-4 rounded-lg border border-amber-400/25 bg-amber-400/10 px-4 py-2 text-[12px] leading-6 text-amber-200">
+                <div className="mb-4 rounded-lg border border-amber-500/35 bg-amber-400/15 px-4 py-2 text-[12px] leading-6 text-amber-700">
                   {parsed.warnings.map((w, i) => (
                     <div key={i}>· {w}</div>
                   ))}
