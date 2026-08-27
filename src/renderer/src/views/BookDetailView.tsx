@@ -428,7 +428,7 @@ function StarCard({
                   ) : (
                     <div className="text-[12.5px] italic leading-6 text-[var(--text-dim)]">
                       <span className="serif">{t.content}</span>
-                      <span className="ml-2 not-italic opacity-60">{(t.created_at ?? '').slice(0, 10)}</span>
+                      <span className="ml-2 not-italic opacity-60">{(t.thought_date || t.created_at).slice(0, 10)}</span>
                       <span className="ml-2 hidden gap-2 not-italic group-hover/t:inline">
                         <button className="hover:text-[var(--accent)]" onClick={() => setEditingThought(t)}>
                           改

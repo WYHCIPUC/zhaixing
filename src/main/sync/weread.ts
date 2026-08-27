@@ -91,7 +91,14 @@ export async function syncBook(db: DB, apiKey: string, bookId: string): Promise<
       let hid: number | null | undefined = contentToId.get(key)
       if (!hid) {
         const ch = rv.chapterUid !== undefined ? chapterMap.get(rv.chapterUid) : undefined
-        const res = insertHighlight(db, book.id, ch?.title ?? rv.chapterName ?? '', ch?.chapterIdx ?? rv.chapterIdx ?? 0, key)
+        const res = insertHighlight(
+          db,
+          book.id,
+          ch?.title ?? rv.chapterName ?? '',
+          ch?.chapterIdx ?? rv.chapterIdx ?? 0,
+          key,
+          ts(rv.createTime)
+        )
         if (res.added) report.highlightsAdded++
         hid = res.id || findHighlightId(db, book.id, ch?.title ?? rv.chapterName ?? '', key)
         if (hid) contentToId.set(key, hid)
@@ -112,9 +119,11 @@ export async function syncBook(db: DB, apiKey: string, bookId: string): Promise<
     }
     if (!attached) report.thoughtsSkipped++
 
+    // star 实测为 0-100 刻度（100=好看，20=差），换算成 1-5 星
     if (rv.star !== undefined && rv.star >= 0 && book.rating === 0) {
-      updateBook(db, book.id, { rating: rv.star })
-      book.rating = rv.star
+      const stars = Math.max(1, Math.min(5, Math.round(rv.star / 20)))
+      updateBook(db, book.id, { rating: stars })
+      book.rating = stars
       report.ratingSet = true
     }
   }

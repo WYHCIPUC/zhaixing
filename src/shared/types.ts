@@ -24,6 +24,7 @@ export interface ThoughtRecord {
   highlight_id: number
   content: string
   source: 'user' | 'ai'
+  thought_date?: string | null // 微信读书同步的真实想法时间
   created_at: string
 }
 

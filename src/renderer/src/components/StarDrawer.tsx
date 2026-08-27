@@ -102,10 +102,10 @@ export default function StarDrawer({
         </h3>
         <div className="mt-2 space-y-2 border-l border-dashed border-[rgba(251,191,36,0.35)] pl-4">
           {(star.thoughts ?? []).map((t) => (
-            <div key={t.id} className="text-[12.5px] italic leading-6 text-[var(--text-dim)]">
-              <span className="serif">{t.content}</span>
-              <span className="ml-2 not-italic opacity-60">{t.created_at.slice(0, 10)}</span>
-            </div>
+              <div key={t.id} className="text-[12.5px] italic leading-6 text-[var(--text-dim)]">
+                <span className="serif">{t.content}</span>
+                <span className="ml-2 not-italic opacity-60">{(t.thought_date || t.created_at).slice(0, 10)}</span>
+              </div>
           ))}
           {(star.thoughts?.length ?? 0) === 0 && <div className="text-[12px] opacity-50">还没有想法</div>}
         </div>
