@@ -16,5 +16,12 @@
     }
   },
   "include": ["src/renderer/src/**/*", "src/shared/**/*"],
-  "exclude": ["node_modules", "out"]
+  "exclude": [
+    "node_modules",
+    "out",
+    "dist-mobile",
+    "src/shared/db/test-executor.ts",
+    "src/shared/weread/api.live.test.ts",
+    "src/renderer/src/api/mobile-api.test.ts"
+  ]
 }
