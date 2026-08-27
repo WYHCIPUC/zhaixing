@@ -358,7 +358,8 @@ export class StarfieldEngine {
 
   private loop = (): void => {
     this.raf = requestAnimationFrame(this.loop)
-    this.sim.tick(1)
+    // 力导向沉降后停止计算，只保留绘制（闪烁/交互），大幅降低 CPU
+    if (this.sim.alpha()! > 0.015) this.sim.tick(1)
     if (this.camTarget) {
       this.cam.x += (this.camTarget.x - this.cam.x) * 0.08
       this.cam.y += (this.camTarget.y - this.cam.y) * 0.08

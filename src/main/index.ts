@@ -2,6 +2,7 @@ import { app, BrowserWindow, shell } from 'electron'
 import path from 'node:path'
 import { backupDatabase, closeDb } from './db/connection'
 import { registerIpc } from './ipc'
+import { runHeadlessSync } from './headless'
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -35,6 +36,11 @@ function createWindow(): void {
 app.whenReady().then(() => {
   backupDatabase() // 启动即轮换备份
   registerIpc()
+  if (process.env.ZHAIXING_SYNC) {
+    // 无界面批量同步模式：同步完自动退出
+    void runHeadlessSync()
+    return
+  }
   createWindow()
 
   app.on('activate', () => {
