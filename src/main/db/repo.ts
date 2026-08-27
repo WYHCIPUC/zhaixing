@@ -14,23 +14,14 @@ import type {
 
 // ---------- 工具 ----------
 
+// 同步版（better-sqlite3 世界）；手机端用 shared/hash.ts 的 starHashAsync，
+// 两者输出逐字节一致（见 src/shared/db/fts.test.ts 固定向量）
 export function starHash(bookId: number, chapter: string, content: string): string {
   return createHash('sha1').update(`${bookId}\n${chapter}\n${content}`).digest('hex')
 }
 
-// FTS 中文按字切分：unicode61 不会切 CJK，入库与查询统一加空格成短语
-function cjkSplit(text: string): string {
-  return text
-    .replace(/([\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff])/g, '$1 ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-function buildFtsQuery(q: string): string {
-  const terms = q.trim().split(/\s+/).filter(Boolean)
-  if (terms.length === 0) return ''
-  return terms.map((t) => `"${cjkSplit(t)}"`).join(' ')
-}
+export { cjkSplit, buildFtsQuery } from '@shared/db/fts'
+import { cjkSplit, buildFtsQuery } from '@shared/db/fts'
 
 // ---------- FTS 同步 ----------
 

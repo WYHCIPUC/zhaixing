@@ -1,13 +1,21 @@
 import type { ParseResult, ParsedBook, ParsedHighlight } from '@shared/types'
 
-// 微信读书导出文本解析器
-// 已知格式特征（以真实样本为准持续校准）：
+// 微信读书导出文本解析器（双格式）
+//
+// 格式 A「App 复制/分享」（2026-08 真实样本校准）：
 //   《书名》
-//   作者名 / 作者：某某
-//   ◆ 章节名
-//   >> 划线内容
-//   // 想法内容
-//   行尾可能带日期 2024/03/15 或 2024年3月15日
+//   作者
+//   35个笔记
+//   4                      ← 纯数字行 = 章节号
+//   ◆ 划线原文             ← ◆ = 划线
+//   ◆ 2026/07/21发表想法    ← 想法块：日期头
+//   想法正文（可多段）
+//   原文：变色龙            ← 锚点：想法所属的原文（可能不在划线列表中，需补建）
+//   开场白 大江东去          ← 纯文字行 = 章节标题
+//   -- 来自微信读书         ← 尾注
+//
+// 格式 B「传统标记」：
+//   《书名》 / 作者：某某 / ◆ 章节 / >> 划线 / // 想法
 
 const DATE_TAIL = /[（(【\s·—\-–~至]*\d{4}[年/.\-]\d{1,2}[月/.\-]\d{1,2}日?[）)】]?\s*$/
 const CHAPTER_PREFIX = /^[◆◇●○■□▶▷·•▼▽]\s*(.+)$/
@@ -16,6 +24,11 @@ const CHAPTER_NAME =
 const HIGHLIGHT_PREFIX = /^>{1,2}\s?(.*)$/
 const THOUGHT_PREFIX = /^(?:\/\/+|想法\s*[:：]|笔记\s*[:：])\s*(.*)$/
 const AUTHOR_PREFIX = /^(?:作者|著者|author)\s*[:：]?\s*(.*)$/i
+const APP_THOUGHT_HEADER = /^◆\s*(\d{4}[年/.\-]\d{1,2}[月/.\-]\d{1,2}日?)\s*发表想法\s*$/
+const APP_ANCHOR = /^原文\s*[:：]\s?(.*)$/
+const PURE_NUMBER = /^\d{1,4}$/
+const FOOTER = /^--\s*来自微信读书\s*$/
+const NOTE_COUNT = /^\d+个笔记$/
 
 interface StripResult {
   text: string
@@ -30,18 +43,216 @@ function stripDateTail(line: string): StripResult {
 
 function joinText(a: string, b: string): string {
   if (!a) return b
-  // 中文直接拼接，西文补空格
   if (/[\x20-\x7e]$/.test(a) && /^[\x20-\x7e]/.test(b)) return `${a} ${b}`
   return a + b
 }
 
+function stripQuotes(text: string): string {
+  return text
+    .replace(/^[“”"'‘’「『」』\s、，。]+/, '')
+    .replace(/[“”"'‘’「』」\s]+$/, '')
+    .trim()
+}
+
 export function parseWereadText(raw: string): ParseResult {
   const lines = raw.replace(/\r\n?/g, '\n').split('\n')
+  const isLegacy = lines.some((l) => /^>{1,2}\s?\S/.test(l.trim()))
+  return isLegacy ? parseLegacy(lines) : parseApp(lines)
+}
+
+// ================= 格式 A：App 复制/分享 =================
+
+function parseApp(lines: string[]): ParseResult {
   const books: ParsedBook[] = []
   const warnings: string[] = []
 
-  // 用对象持有可变状态：TS 对对象属性的 narrow 在跨语句时会重置，
-  // 不会像裸 let + 闭包那样把类型收窄成 never
+  const st: {
+    book: ParsedBook | null
+    chapter: string
+    authorPending: boolean
+    seenCount: boolean
+    mode: 'idle' | 'thought' | 'anchor'
+    thoughtDate: string | null
+    thoughtLines: string[]
+    anchor: string
+    thoughtChapter: string
+  } = {
+    book: null,
+    chapter: '',
+    authorPending: false,
+    seenCount: false,
+    mode: 'idle',
+    thoughtDate: null,
+    thoughtLines: [],
+    anchor: '',
+    thoughtChapter: ''
+  }
+
+  const structural = (l: string): boolean =>
+    /^《.+?》/.test(l) || /^◆/.test(l) || PURE_NUMBER.test(l) || FOOTER.test(l) || NOTE_COUNT.test(l)
+
+  const finishThought = (): void => {
+    if (st.mode === 'idle') return
+    const content = st.thoughtLines.join('\n').trim()
+    const anchorRaw = st.anchor.trim()
+    const b = st.book
+    if (b && content) {
+      let target: ParsedHighlight | null = null
+      if (anchorRaw) {
+        const norm = stripQuotes(anchorRaw)
+        for (const h of b.highlights) {
+          const hc = stripQuotes(h.content)
+          const exact = h.content === anchorRaw || hc === norm
+          const fuzzy =
+            (norm.length >= 6 && h.content.includes(norm)) ||
+            (hc.length >= 6 && norm.includes(hc))
+          if (exact || fuzzy) {
+            target = h
+            break
+          }
+        }
+        if (!target) {
+          // 原文不在划线列表中（微信读书常这样），补建这条划线
+          target = { content: norm, chapter: st.thoughtChapter, thoughts: [] }
+          b.highlights.push(target)
+        }
+      } else if (b.highlights.length > 0) {
+        target = b.highlights[b.highlights.length - 1]
+      } else {
+        warnings.push(`想法「${content.slice(0, 18)}…」缺少归属划线，已跳过`)
+      }
+      if (target) target.thoughts.push({ content, date: st.thoughtDate })
+    }
+    st.mode = 'idle'
+    st.thoughtLines = []
+    st.anchor = ''
+    st.thoughtDate = null
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
+    if (!line) continue
+
+    // 书名
+    const titleMatch = line.match(/^《(.+?)》\s*[^《]*$/)
+    if (titleMatch && st.mode === 'idle') {
+      const title = titleMatch[1].trim()
+      const existing = books.find((x) => x.title === title)
+      if (existing) {
+        st.book = existing
+      } else {
+        const created: ParsedBook = { title, author: '', chapters: [], highlights: [] }
+        books.push(created)
+        st.book = created
+        st.authorPending = true
+        st.seenCount = false
+      }
+      st.chapter = ''
+      continue
+    }
+
+    const b = st.book
+    if (!b) continue // 书名之前的杂项丢弃
+
+    // 尾注 / 计数行
+    if (FOOTER.test(line) || NOTE_COUNT.test(line)) {
+      st.seenCount = true
+      finishThought()
+      continue
+    }
+
+    // 想法块内部
+    if (st.mode !== 'idle') {
+      if (st.mode === 'thought') {
+        const anchorMatch = line.match(APP_ANCHOR)
+        if (anchorMatch) {
+          st.anchor = anchorMatch[1]
+          st.mode = 'anchor'
+          continue
+        }
+        if (structural(line)) {
+          finishThought()
+          // 落回主流程处理当前行（不 continue）
+        } else {
+          st.thoughtLines.push(line)
+          continue
+        }
+      } else {
+        // anchor 模式：原文可能折行
+        if (structural(line)) {
+          finishThought()
+          // 落回主流程
+        } else {
+          st.anchor += line
+          continue
+        }
+      }
+    }
+
+    // 纯数字 = 章节号
+    if (PURE_NUMBER.test(line)) {
+      st.chapter = line
+      continue
+    }
+
+    // ◆ 日期发表想法 = 想法块开始
+    const thoughtHeader = line.match(APP_THOUGHT_HEADER)
+    if (thoughtHeader) {
+      finishThought()
+      st.mode = 'thought'
+      st.thoughtDate = stripDateTail(thoughtHeader[1]).date ?? thoughtHeader[1]
+      st.thoughtChapter = st.chapter
+      continue
+    }
+
+    // ◆ 划线
+    const appHighlight = line.match(/^◆\s?(.*)$/)
+    if (appHighlight) {
+      finishThought()
+      const { text } = stripDateTail(appHighlight[1])
+      if (text) {
+        b.highlights.push({ content: text, chapter: st.chapter, thoughts: [] })
+        if (st.chapter && !b.chapters.includes(st.chapter)) b.chapters.push(st.chapter)
+      }
+      continue
+    }
+
+    // 作者：书名后、计数行前的第一个普通行
+    const authorMatch = line.match(AUTHOR_PREFIX)
+    if (authorMatch && !b.author) {
+      b.author = stripDateTail(authorMatch[1]).text
+      st.authorPending = false
+      continue
+    }
+    if (st.authorPending && !st.seenCount && !b.author) {
+      b.author = stripDateTail(line).text
+      st.authorPending = false
+      continue
+    }
+
+    // 其余普通行 = 章节标题（如「开场白 大江东去」）
+    st.chapter = stripDateTail(line).text
+    if (!b.chapters.includes(st.chapter)) b.chapters.push(st.chapter)
+  }
+
+  finishThought()
+
+  for (const bk of [...books]) {
+    if (bk.highlights.length === 0) {
+      warnings.push(`《${bk.title}》未解析到任何划线，已跳过`)
+      books.splice(books.indexOf(bk), 1)
+    }
+  }
+
+  return { books, warnings, lineCount: lines.length }
+}
+
+// ================= 格式 B：传统标记 =================
+
+function parseLegacy(lines: string[]): ParseResult {
+  const books: ParsedBook[] = []
+  const warnings: string[] = []
+
   const st: {
     book: ParsedBook | null
     chapter: string
@@ -57,20 +268,6 @@ export function parseWereadText(raw: string): ParseResult {
     st.mode = 'none'
   }
 
-  const useBook = (title: string): ParsedBook => {
-    flushStar()
-    st.chapter = ''
-    const existing = books.find((x) => x.title === title)
-    if (existing) {
-      st.book = existing
-      return existing
-    }
-    const created: ParsedBook = { title, author: '', chapters: [], highlights: [] }
-    books.push(created)
-    st.book = created
-    return created
-  }
-
   const useChapter = (name: string): void => {
     flushStar()
     st.chapter = name
@@ -82,38 +279,43 @@ export function parseWereadText(raw: string): ParseResult {
     const line = rawLine.trim()
     if (!line) continue
 
-    // 书名
     const titleMatch = line.match(/^《(.+?)》\s*[^《]*$/)
     if (titleMatch) {
-      useBook(titleMatch[1].trim())
+      flushStar()
+      st.chapter = ''
+      const title = titleMatch[1].trim()
+      const existing = books.find((x) => x.title === title)
+      if (existing) {
+        st.book = existing
+      } else {
+        const created: ParsedBook = { title, author: '', chapters: [], highlights: [] }
+        books.push(created)
+        st.book = created
+      }
       continue
     }
 
     const b = st.book
-    if (!b) continue // 书名之前的杂项（页眉、导出说明等）丢弃
+    if (!b) continue
 
-    // 作者
     const authorMatch = line.match(AUTHOR_PREFIX)
     if (authorMatch && !b.author) {
       b.author = stripDateTail(authorMatch[1]).text
       continue
     }
 
-    // 符号标记的章节
     const chapterMatch = line.match(CHAPTER_PREFIX)
     if (chapterMatch && !HIGHLIGHT_PREFIX.test(line) && !THOUGHT_PREFIX.test(line)) {
       useChapter(stripDateTail(chapterMatch[1]).text)
       continue
     }
 
-    // 文字标记的章节（第X章 / 序言 / 后记…）
     if (!HIGHLIGHT_PREFIX.test(line) && !THOUGHT_PREFIX.test(line) && CHAPTER_NAME.test(line)) {
       const m = line.match(CHAPTER_NAME)!
       useChapter(stripDateTail(m[2] ? `${m[1]} ${m[2]}` : m[1]).text)
       continue
     }
 
-    // 划线
     const highlightMatch = line.match(HIGHLIGHT_PREFIX)
     if (highlightMatch) {
       flushStar()
@@ -123,7 +325,6 @@ export function parseWereadText(raw: string): ParseResult {
       continue
     }
 
-    // 想法
     const thoughtMatch = line.match(THOUGHT_PREFIX)
     if (thoughtMatch) {
       const { text, date } = stripDateTail(thoughtMatch[1])
@@ -140,7 +341,6 @@ export function parseWereadText(raw: string): ParseResult {
       continue
     }
 
-    // 普通行：作者未定且书刚开篇时视为作者；其余视为当前划线/想法的续行
     const { text, date } = stripDateTail(line)
     const s = st.star
     if (!b.author && b.highlights.length === 0 && !s) {
@@ -160,7 +360,6 @@ export function parseWereadText(raw: string): ParseResult {
 
   flushStar()
 
-  // 无划线的书剔除并告警
   for (const bk of [...books]) {
     if (bk.highlights.length === 0) {
       warnings.push(`《${bk.title}》未解析到任何划线，已跳过`)
