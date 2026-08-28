@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { LinkRecord } from '@shared/types'
+import { DUR, EASE_DRAWER } from '../motion'
 
 // 共创连线审核：AI 提议（双星/对撞），用户逐条盖章
 export default function LinkReview({
@@ -33,10 +34,10 @@ export default function LinkReview({
 
   return (
     <motion.div
-      initial={{ x: 460, opacity: 0.5 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: 460, opacity: 0 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 32 }}
+      initial={{ x: '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: '100%', transition: { duration: DUR.base, ease: EASE_DRAWER } }}
+      transition={{ duration: DUR.slow, ease: EASE_DRAWER }}
       className="absolute right-0 top-0 z-[70] flex h-full w-[460px] max-w-[50vw] shrink-0 flex-col overflow-hidden border-l border-[var(--line)] bg-white shadow-[-24px_0_64px_rgba(20,30,60,0.2)] "
     >
       <header className="flex items-center justify-between border-b border-[var(--line)] px-5 py-3">

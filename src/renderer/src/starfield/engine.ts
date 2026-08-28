@@ -262,7 +262,7 @@ export class StarfieldEngine {
       const len = Math.min(2.4, s.content.length / 90)
       // 星等按幂律分布：绝大多数是暗小微星，少数是亮星（真实星空的亮度结构）
       const pr = Math.pow(rand(), 2.4)
-      const r = 0.9 + pr * 4.6 + (s.favorite ? 1.1 : 0) + (s.is_gem ? 1.6 : 0)
+      const r = 0.9 + pr * 4.6 + (s.favorite ? 1.1 : 0) + (s.is_gem ? 2.4 : 0)
       const core = s.nebula_ids[0] !== undefined ? (coreOf.get(s.nebula_ids[0]) ?? freeCore) : freeCore
       const dist = 60 + rand() * (60 + Math.sqrt(core.mass) * 3.2)
       const ang = rand() * Math.PI * 2
@@ -272,7 +272,7 @@ export class StarfieldEngine {
       // 切向速度 → 进入稳定轨道；每个星系按自转方向旋转
       this.vx[i] = -Math.sin(ang) * orbitalV * core.spin + (rand() - 0.5) * 2
       this.vy[i] = Math.cos(ang) * orbitalV * core.spin + (rand() - 0.5) * 2
-      this.mass[i] = 1 + Math.min(5, s.content.length / 380) + (s.favorite ? 2 : 0) + (s.is_gem ? 3 : 0)
+      this.mass[i] = 1 + Math.min(5, s.content.length / 380) + (s.favorite ? 2 : 0) + (s.is_gem ? 6 : 0) // 镇星之宝是本星域的引力核心
       return {
         id: s.id,
         star: s,
@@ -725,6 +725,7 @@ export class StarfieldEngine {
       const sx = this.screenX(i)
       const sy = this.screenY(i)
       if (sx < -80 || sx > w + 80 || sy < -80 || sy > h + 80) continue
+      if (n.star.is_gem) continue // 镇星之宝在恒星级渲染层单独绘制
       const tw = 0.82 + 0.18 * Math.sin(t * 1.4 + n.phase)
       if (n.r < 2.2) {
         // 暗小微星：实心小点（真实照片中绝大多数星是 1px 亮斑）
@@ -771,29 +772,74 @@ export class StarfieldEngine {
       }
     }
 
+    // 镇星之宝：恒星级渲染——呼吸光晕 + 长衍射芒，本星域最亮的天体
+    for (let i = 0; i < this.nodes.length; i++) {
+      const n = this.nodes[i]
+      if (!n.star.is_gem) continue
+      const sx = this.screenX(i)
+      const sy = this.screenY(i)
+      if (sx < -180 || sx > w + 180 || sy < -180 || sy > h + 180) continue
+      const base = (n.r * 3.4 + 10) * Math.max(1, this.cam.k)
+      const pulse = 1 + 0.09 * Math.sin(t * 0.9 + n.phase)
+      // 呼吸外晕
+      const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, base * 3.4 * pulse)
+      halo.addColorStop(0, 'rgba(255,228,150,0.3)')
+      halo.addColorStop(0.4, 'rgba(255,200,90,0.1)')
+      halo.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = halo
+      ctx.fillRect(sx - base * 3.4 * pulse, sy - base * 3.4 * pulse, base * 6.8 * pulse, base * 6.8 * pulse)
+      // 恒星主体
+      const sprite = this.spriteFor('#ffd166')
+      const size = base * 2.3 * pulse
+      ctx.globalAlpha = 1
+      ctx.drawImage(sprite, sx - size / 2, sy - size / 2, size, size)
+      // 衍射芒：4 长 + 4 短斜，缓慢呼吸
+      const rayA = 0.55 + 0.15 * Math.sin(t * 1.1 + n.phase)
+      this.paintSpikes(ctx, sx, sy, base * 2.6, '#ffe8b0', rayA)
+      this.paintSpikes(ctx, sx, sy, base * 1.5, '#ffe8b0', rayA * 0.6, Math.PI / 4)
+      // 选中/圈选环
+      if (n.id === this.selectedId || this.multiSelected.has(n.id)) {
+        ctx.strokeStyle = 'rgba(255,235,180,0.95)'
+        ctx.lineWidth = 1.2
+        ctx.beginPath()
+        ctx.arc(sx, sy, base * 1.25, 0, Math.PI * 2)
+        ctx.stroke()
+      }
+    }
+
     ctx.globalCompositeOperation = 'source-over'
     ctx.globalAlpha = 1
     ctx.restore()
   }
 
   // 亮星衍射芒：十字光晕
-  private paintSpikes(g: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, alpha: number): void {
+  private paintSpikes(
+    g: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    size: number,
+    color: string,
+    alpha: number,
+    rotation = 0
+  ): void {
     const len = Math.max(8, size * 0.75)
     g.save()
+    g.translate(x, y)
+    if (rotation) g.rotate(rotation)
     g.globalCompositeOperation = 'lighter'
     g.lineWidth = 1
     for (const [dx, dy] of [
       [1, 0],
       [0, 1]
     ]) {
-      const grad = g.createLinearGradient(x - dx * len, y - dy * len, x + dx * len, y + dy * len)
+      const grad = g.createLinearGradient(-dx * len, -dy * len, dx * len, dy * len)
       grad.addColorStop(0, colorWithAlpha(color, 0))
       grad.addColorStop(0.5, colorWithAlpha(color, alpha))
       grad.addColorStop(1, colorWithAlpha(color, 0))
       g.strokeStyle = grad
       g.beginPath()
-      g.moveTo(x - dx * len, y - dy * len)
-      g.lineTo(x + dx * len, y + dy * len)
+      g.moveTo(-dx * len, -dy * len)
+      g.lineTo(dx * len, dy * len)
       g.stroke()
     }
     g.restore()

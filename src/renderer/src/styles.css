@@ -82,6 +82,38 @@ body {
   color: #37352f;
 }
 
+/* ---------- 字阶（v5 §2.2：层级靠字重+字号+行高组合） ---------- */
+
+.t-display {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.t-h2 {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+  color: var(--text);
+}
+.t-caption {
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  color: var(--text-dim);
+}
+
+/* ---------- 浮动层材质（v5 §2.2：轻材质，内容从其下滚过） ---------- */
+
+.material {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
 /* ---------- 表面 ---------- */
 
 .panel {
@@ -93,9 +125,9 @@ body {
 
 .panel-hover {
   transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease,
-    border-color 0.15s ease;
+    transform var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out);
 }
 .panel-hover:hover {
   transform: translateY(-1px);
@@ -116,10 +148,10 @@ body {
   color: var(--text);
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease,
-    transform 0.1s ease;
+    background var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out),
+    transform 160ms var(--ease-out);
   font-size: 13px;
   font-weight: 500;
   user-select: none;
@@ -157,7 +189,7 @@ body {
   color: var(--text);
   outline: none;
   font-size: 13px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
 }
 .input:focus {
   border-color: var(--accent);
@@ -203,7 +235,7 @@ select:focus-visible {
 }
 
 .btn:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 .btn svg {
   width: 14px;
@@ -211,7 +243,7 @@ select:focus-visible {
   flex-shrink: 0;
 }
 
-/* ---------- 关键帧（150–200ms ease 原则） ---------- */
+/* ---------- 关键帧（一律 var(--ease-*) + 时长档；起跳不得低于 scale(0.9)） ---------- */
 
 @keyframes floaty {
   0%,
@@ -222,6 +254,7 @@ select:focus-visible {
     transform: translateY(-7px);
   }
 }
+/* 环境漂浮：仅限空态插画使用（v5 §4.2），reduce-motion 全局停 */
 .floaty {
   animation: floaty 4.5s ease-in-out infinite;
 }
@@ -229,26 +262,29 @@ select:focus-visible {
 @keyframes cell-in {
   from {
     opacity: 0;
-    transform: scale(0.5);
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.cell-in {
+  animation: cell-in var(--dur-3) var(--ease-out) both;
+}
+
+@keyframes radar-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
   }
   to {
     opacity: 1;
     transform: scale(1);
   }
 }
-.cell-in {
-  animation: cell-in 0.4s ease-out both;
-}
-
-@keyframes radar-in {
-  from {
-    opacity: 0;
-    transform: scale(0.3) rotate(-30deg);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) rotate(0);
-  }
+.radar-in {
+  animation: radar-in var(--dur-3) var(--ease-out) both;
 }
 
 @keyframes twinkle {
@@ -266,4 +302,29 @@ select:focus-visible {
 
 .star-mark {
   color: var(--gold);
+}
+
+/* ---------- 无障碍降级（v5 §7） ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 120ms !important;
+  }
+  .floaty,
+  .twinkle {
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .material {
+    background: var(--surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-color: var(--line);
+  }
 }

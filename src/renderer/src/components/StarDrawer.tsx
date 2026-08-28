@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useDragControls } from 'framer-motion'
 import { toast } from 'sonner'
 import type { LinkRecord, NebulaRecord, SearchHit, StarContext, StarMapStar } from '@shared/types'
 import { makeQuoteCard } from '../share/card'
+import { DUR, EASE_DRAWER, flickShouldDismiss } from '../motion'
 
 const KIND_META: Record<string, { label: string; icon: string }> = {
   twin: { label: '双星', icon: '✧' },
@@ -37,6 +38,7 @@ export default function StarDrawer({
   const [linkTarget, setLinkTarget] = useState('')
   const [linkNote, setLinkNote] = useState('')
   const [linkSearch, setLinkSearch] = useState<SearchHit[] | null>(null)
+  const dragControls = useDragControls()
 
   useEffect(() => {
     setCtx(null)
@@ -70,13 +72,25 @@ export default function StarDrawer({
 
   return (
     <motion.div
-      initial={{ x: 420, opacity: 0.5 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: 420, opacity: 0 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 32 }}
+      initial={{ x: '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: '100%', transition: { duration: DUR.base, ease: EASE_DRAWER } }}
+      transition={{ duration: DUR.slow, ease: EASE_DRAWER }}
+      drag="x"
+      dragListener={false}
+      dragControls={dragControls}
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.12}
+      onDragEnd={(_, info) => {
+        if (info.offset.x > 0 && flickShouldDismiss(info.offset.x, info.velocity.x)) onClose()
+      }}
       className="absolute right-0 top-0 z-[60] flex h-full w-full flex-col overflow-hidden border-l border-[var(--line)] bg-white shadow-[-24px_0_64px_rgba(20,30,60,0.18)]  md:w-[400px] md:max-w-[45vw]"
     >
-      <header className="flex items-center justify-between border-b border-[var(--line)] px-5 py-3">
+      <header
+        className="flex items-center justify-between border-b border-[var(--line)] px-5 py-3"
+        style={{ touchAction: 'none' }}
+        onPointerDown={(e) => dragControls.start(e)}
+      >
         <div className="text-[13px] text-[var(--text-dim)]">
           《{star.book_title}》{star.chapter ? ` · ${star.chapter}` : ''}
         </div>

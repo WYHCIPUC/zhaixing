@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import type { NebulaRecord, StarMapStar } from '@shared/types'
+import { DUR, EASE_OUT, SPRING_SETTLE } from '../motion'
 
 // 星座志：一片星云的全部摘录 + 你的想法 + 综述
 export default function NebulaPanel({
@@ -28,9 +29,11 @@ export default function NebulaPanel({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 24, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 16, transition: { duration: DUR.base, ease: EASE_OUT } }}
+      transition={SPRING_SETTLE}
+      style={{ transformOrigin: 'bottom center' }}
       className="absolute inset-x-0 bottom-0 z-[50] max-h-[62%] overflow-hidden border-t border-[var(--line)] "
     >
       <header className="flex items-center gap-3 border-b border-[var(--line)] px-8 py-3">

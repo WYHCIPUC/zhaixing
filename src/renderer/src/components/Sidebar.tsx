@@ -4,14 +4,16 @@ import { BarChart3, BookOpen, Feather, MoonStar, Settings, Sparkles } from 'luci
 import Hint from './Hint'
 import type { OverviewStats } from '@shared/types'
 import type { ViewKey } from '../App'
+import { DUR, EASE_OUT } from '../motion'
 
-const NAV: { key: ViewKey; label: string; icon: typeof BookOpen }[] = [
-  { key: 'shelf', label: '书架', icon: BookOpen },
-  { key: 'sky', label: '星穹', icon: Sparkles },
-  { key: 'meteor', label: '流星', icon: MoonStar },
-  { key: 'weave', label: '织星', icon: Feather },
-  { key: 'stats', label: '统计', icon: BarChart3 },
-  { key: 'settings', label: '设置', icon: Settings }
+// 书脊色取自书色盘 MORANDI（src/main/db/repo.ts，书=星的本源，与星图用色同源）
+const NAV: { key: ViewKey; label: string; icon: typeof BookOpen; spine: string }[] = [
+  { key: 'shelf', label: '书架', icon: BookOpen, spine: '#c97b4a' },
+  { key: 'sky', label: '星穹', icon: Sparkles, spine: '#6f8fa8' },
+  { key: 'meteor', label: '流星', icon: MoonStar, spine: '#a483b8' },
+  { key: 'weave', label: '织星', icon: Feather, spine: '#c9a227' },
+  { key: 'stats', label: '统计', icon: BarChart3, spine: '#7a9e9f' },
+  { key: 'settings', label: '设置', icon: Settings, spine: '#8f9a6d' }
 ]
 
 export default function Sidebar({
@@ -34,6 +36,7 @@ export default function Sidebar({
           className="text-[19px] font-semibold tracking-wide"
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: DUR.base, ease: EASE_OUT }}
         >
           <span className="star-mark mr-1.5 inline-block">✦</span>
           摘星实录
@@ -43,6 +46,7 @@ export default function Sidebar({
         </div>
       </div>
 
+      {/* 书架：每项是一本书的书脊，激活＝书被抽出来（v5 §0.5-①，切换零动画） */}
       <nav className="flex flex-col gap-0.5">
         {NAV.map((n) => {
           const active = view === n.key
@@ -51,32 +55,29 @@ export default function Sidebar({
             <Hint key={n.key} label={n.label} side="right">
               <button
                 onClick={() => onNavigate(n.key)}
-                className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[13.5px] font-medium transition-colors ${
-                  active ? 'text-[var(--text)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'
+                className={`relative flex w-full items-center rounded-lg py-2 pl-4 pr-3 text-left text-[13.5px] font-medium transition-colors ${
+                  active
+                    ? 'bg-[var(--surface-2)] text-[var(--text)]'
+                    : 'text-[var(--text-dim)] hover:bg-[rgba(15,15,15,0.03)] hover:text-[var(--text)]'
                 }`}
               >
-                {active && (
-                  <>
-                    <motion.span
-                      layoutId="nav-active"
-                      transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                      className="absolute inset-0 rounded-lg bg-[var(--accent-soft)]"
-                    />
-                    <motion.span
-                      layoutId="nav-bar"
-                      transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                      className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full bg-[var(--accent)]"
-                    />
-                  </>
-                )}
-                <motion.span
-                  className="relative z-10 flex w-4 justify-center"
-                  whileHover={{ scale: 1.12 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+                <span
+                  aria-hidden
+                  className="absolute left-0 top-1/2 w-[3px] -translate-y-1/2 rounded-full"
+                  style={{
+                    background: n.spine,
+                    height: active ? '58%' : '10px',
+                    opacity: active ? 1 : 0.4
+                  }}
+                />
+                <span
+                  className={`relative z-10 flex items-center gap-3 ${active ? 'translate-x-[3px]' : ''}`}
                 >
-                  <Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
-                </motion.span>
-                <span className="relative z-10">{n.label}</span>
+                  <span className="flex w-4 justify-center">
+                    <Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
+                  </span>
+                  {n.label}
+                </span>
               </button>
             </Hint>
           )
