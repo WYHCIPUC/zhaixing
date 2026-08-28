@@ -38,7 +38,7 @@ export default function NebulaPanel({
     >
       <header className="flex items-center gap-3 border-b border-[var(--line)] px-8 py-3">
         <div>
-          <span className="mr-2 rounded-full border border-[var(--line)] px-2 py-0.5 text-[10.5px] text-[var(--text-dim)]">
+          <span className="mr-2 rounded-full border border-[var(--line)] px-2 py-0.5 text-[11px] text-[var(--text-dim)]">
             {isUser ? '自造星云' : 'AI 聚类'}
           </span>
           <span className="text-[16px] font-semibold">{nebula.name}</span>
@@ -47,7 +47,7 @@ export default function NebulaPanel({
         <div className="ml-auto flex gap-2">
           {isUser && (
             <button
-              className="btn btn-danger py-1 text-[12px]"
+              className="btn btn-sm btn-danger"
               onClick={async () => {
                 if (!confirm(`解散星云「${nebula.name}」？星星本身不受影响。`)) return
                 await window.api.deleteNebula(nebula.id)
@@ -58,7 +58,7 @@ export default function NebulaPanel({
               解散
             </button>
           )}
-          <button className="btn py-1 text-[12px]" onClick={onClose}>
+          <button className="btn btn-sm" onClick={onClose}>
             收起 ✕
           </button>
         </div>
@@ -75,10 +75,10 @@ export default function NebulaPanel({
               onChange={(e) => setSummary(e.target.value)}
             />
             <div className="mt-2 flex gap-2">
-              <button className="btn btn-primary py-1 text-[12px]" onClick={() => void saveSummary()}>
+              <button className="btn btn-sm btn-primary" onClick={() => void saveSummary()}>
                 保存综述
               </button>
-              <button className="btn py-1 text-[12px]" onClick={() => setSummary(null)}>
+              <button className="btn btn-sm" onClick={() => setSummary(null)}>
                 取消
               </button>
             </div>
@@ -106,7 +106,7 @@ export default function NebulaPanel({
                   ❝ {s.thoughts![0].content}
                 </div>
               )}
-              <div className="mt-1.5 text-[10.5px] text-[var(--text-dim)]">
+              <div className="mt-1.5 text-[11px] text-[var(--text-dim)]">
                 《{s.book_title}》{s.chapter ? ` · ${s.chapter}` : ''}
               </div>
             </button>

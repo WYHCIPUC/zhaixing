@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { ImportReport, ParseResult } from '@shared/types'
+import { SPRING_SETTLE } from '../motion'
 
 // 导入向导：粘贴 → 解析预览（可改文本重解）→ 确认入库
 export default function ImportWizard({
@@ -61,6 +62,7 @@ export default function ImportWizard({
       <motion.div
         initial={{ scale: 0.96, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
+        transition={SPRING_SETTLE}
         className="panel flex max-h-[88vh] w-[820px] max-w-[92vw] flex-col overflow-hidden "
       >
         <header className="flex items-center justify-between border-b border-[var(--line)] px-6 py-4">
@@ -68,7 +70,7 @@ export default function ImportWizard({
             <span className="star-mark mr-2">✦</span>
             导入微信读书笔记
           </div>
-          <button className="btn px-2 py-1" onClick={onClose}>
+          <button className="btn btn-sm px-2" onClick={onClose}>
             ✕
           </button>
         </header>
@@ -122,7 +124,7 @@ export default function ImportWizard({
                 <span>
                   <b>{totalThoughts}</b> 条想法
                 </span>
-                <button className="btn ml-auto px-2 py-1 text-[12px]" onClick={() => setParsed(null)}>
+                <button className="btn btn-sm ml-auto px-2" onClick={() => setParsed(null)}>
                   ← 返回修改文本
                 </button>
               </div>

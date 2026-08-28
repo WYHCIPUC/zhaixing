@@ -60,15 +60,26 @@ function makeSprite(color: string): HTMLCanvasElement {
   c.width = 96
   c.height = 96
   const g = c.getContext('2d')!
+  const tint = mixWithWhite(color, 0.45)
   const grad = g.createRadialGradient(48, 48, 0, 48, 48, 48)
   grad.addColorStop(0, 'rgba(255,255,255,1)')
-  grad.addColorStop(0.12, colorWithAlpha(color, 0.95))
-  grad.addColorStop(0.3, colorWithAlpha(color, 0.42))
-  grad.addColorStop(0.62, colorWithAlpha(color, 0.14))
+  grad.addColorStop(0.14, colorWithAlpha(tint, 0.85))
+  grad.addColorStop(0.32, colorWithAlpha(tint, 0.3))
+  grad.addColorStop(0.6, colorWithAlpha(tint, 0.07))
   grad.addColorStop(1, 'rgba(0,0,0,0)')
   g.fillStyle = grad
   g.fillRect(0, 0, 96, 96)
   return c
+}
+
+// 恒星色温：真实照片里的星色是白色基调上的微妙色偏，不是饱和色块
+function mixWithWhite(hex: string, t: number): string {
+  if (!hex.startsWith('#')) return hex
+  const r = parseInt(hex.slice(1, 3), 16)
+  const gg = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  const m = (c: number): number => Math.round(c + (255 - c) * t)
+  return `rgb(${m(r)},${m(gg)},${m(b)})`
 }
 
 function colorWithAlpha(color: string, alpha: number): string {
@@ -117,6 +128,11 @@ export class StarfieldEngine {
   private cores: Core[] = []
   private physicsAcc = 0
   private lastTime = 0
+  // v5 §7：reduced-motion 时引擎停在单帧（无闪烁/漂移/流星）；§0.5-④：偶发流星
+  private reduced = false
+  private motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+  private meteor: { x: number; y: number; dx: number; dy: number; born: number } | null = null
+  private nextMeteorAt = performance.now() + 18000 + Math.random() * 20000
   private tickParity = false
   private hazeTimer: ReturnType<typeof setInterval> | null = null
 
@@ -143,6 +159,7 @@ export class StarfieldEngine {
       this.cam.x = wx - (mx - rect.width / 2) / this.cam.k
       this.cam.y = wy - (my - rect.height / 2) / this.cam.k
       this.camTarget = null
+      if (this.reduced) this.draw(performance.now() / 1000)
     }
 
     canvas.addEventListener('pointerdown', (e) => {
@@ -180,6 +197,7 @@ export class StarfieldEngine {
         this.cam.y -= dy / this.cam.k
         this.camTarget = null
         this.lastMouse = { x: e.clientX, y: e.clientY }
+        if (this.reduced) this.draw(performance.now() / 1000)
       } else if (mx >= 0 && my >= 0 && mx <= rect.width && my <= rect.height) {
         this.handleHover(mx, my)
       }
@@ -211,13 +229,33 @@ export class StarfieldEngine {
         this.paused = true
       } else if (this.paused) {
         this.paused = false
+        if (this.reduced) {
+          this.draw(performance.now() / 1000)
+        } else {
+          this.lastTime = performance.now()
+          this.loop()
+        }
+      }
+    })
+
+    this.reduced = this.motionQuery.matches
+    this.motionQuery.addEventListener('change', () => {
+      this.reduced = this.motionQuery.matches
+      cancelAnimationFrame(this.raf)
+      if (this.reduced) {
+        this.draw(performance.now() / 1000)
+      } else {
         this.lastTime = performance.now()
         this.loop()
       }
     })
 
-    this.lastTime = performance.now()
-    this.loop()
+    if (this.reduced) {
+      this.draw(performance.now() / 1000)
+    } else {
+      this.lastTime = performance.now()
+      this.loop()
+    }
   }
 
   destroy(): void {
@@ -289,6 +327,10 @@ export class StarfieldEngine {
         y: this.py[i]
       }
     })
+    // 恒星色温：莫兰迪书色向白混合 35%，只留微妙色偏（真实星色的呈现方式）
+    for (const n of this.nodes) {
+      if (!n.star.is_gem) n.color = mixWithWhite(n.color, 0.35)
+    }
     this.byId = new Map(this.nodes.map((n, i) => [n.id, i]))
 
     this.edges = data.links
@@ -299,6 +341,76 @@ export class StarfieldEngine {
     if (this.hazeTimer) clearInterval(this.hazeTimer)
     this.hazeTimer = setInterval(() => this.computeHaze(), 15000)
     this.buildBackground()
+  }
+
+  private nebulaSprites = new Map<number, HTMLCanvasElement>()
+
+  // 一次性预渲染不规则星云气团：随机游走云絮 + 电离亮芯 + 暗尘埃 + 内嵌年轻亮星
+  private nebulaSpriteFor(hi: number, color: string): HTMLCanvasElement {
+    const cached = this.nebulaSprites.get(hi)
+    if (cached) return cached
+    const size = 640
+    const c = document.createElement('canvas')
+    c.width = size
+    c.height = size
+    const g = c.getContext('2d')!
+    const rand = mulberry32(9137 + hi * 977)
+    const cx = size / 2
+    const cy = size / 2
+    const accent = HAZE_PALETTE[(hi + 3) % HAZE_PALETTE.length]
+    // 主体气团：随机游走云絮
+    let x = cx
+    let y = cy
+    for (let i = 0; i < 46; i++) {
+      const ang = rand() * Math.PI * 2
+      const step = 10 + rand() * 46
+      x += Math.cos(ang) * step
+      y += Math.sin(ang) * step * 0.7
+      x += (cx - x) * 0.06
+      y += (cy - y) * 0.06
+      const dist = Math.hypot(x - cx, y - cy) / (size * 0.42)
+      const r = (16 + rand() * 60) * (1 - Math.min(1, dist) * 0.7) + 10
+      const grad = g.createRadialGradient(x, y, 0, x, y, Math.max(12, r))
+      grad.addColorStop(0, colorWithAlpha(color, 0.05 + rand() * 0.09))
+      grad.addColorStop(1, 'rgba(0,0,0,0)')
+      g.fillStyle = grad
+      g.fillRect(x - r, y - r, r * 2, r * 2)
+    }
+    // 电离亮芯
+    for (let i = 0; i < 16; i++) {
+      const ang = rand() * Math.PI * 2
+      const dist = rand() * size * 0.16
+      const x = cx + Math.cos(ang) * dist
+      const y = cy + Math.sin(ang) * dist
+      const r = 8 + rand() * 26
+      const grad = g.createRadialGradient(x, y, 0, x, y, r)
+      grad.addColorStop(0, colorWithAlpha(accent, 0.06 + rand() * 0.07))
+      grad.addColorStop(1, 'rgba(0,0,0,0)')
+      g.fillStyle = grad
+      g.fillRect(x - r, y - r, r * 2, r * 2)
+    }
+    // 暗尘埃带
+    for (let i = 0; i < 10; i++) {
+      const x = cx + (rand() - 0.5) * size * 0.5
+      const y = cy + (rand() - 0.5) * size * 0.4
+      const r = 14 + rand() * 42
+      const grad = g.createRadialGradient(x, y, 0, x, y, r)
+      grad.addColorStop(0, `rgba(4,5,12,${0.1 + rand() * 0.16})`)
+      grad.addColorStop(1, 'rgba(0,0,0,0)')
+      g.fillStyle = grad
+      g.fillRect(x - r, y - r, r * 2, r * 2)
+    }
+    // 内嵌年轻亮星
+    for (let i = 0; i < 12; i++) {
+      const x = cx + (rand() - 0.5) * size * 0.6
+      const y = cy + (rand() - 0.5) * size * 0.6
+      g.fillStyle = `rgba(255,255,255,${0.3 + rand() * 0.5})`
+      g.beginPath()
+      g.arc(x, y, 0.6 + rand() * 1.1, 0, Math.PI * 2)
+      g.fill()
+    }
+    this.nebulaSprites.set(hi, c)
+    return c
   }
 
   // 辉光跟随星系实际聚拢位置演化
@@ -351,6 +463,11 @@ export class StarfieldEngine {
     const idx = this.byId.get(id)
     if (idx === undefined) return
     this.camTarget = { x: this.px[idx], y: this.py[idx], k: Math.max(1.6, this.cam.k) }
+    if (this.reduced) {
+      this.cam = { ...this.camTarget }
+      this.camTarget = null
+      this.draw(performance.now() / 1000)
+    }
   }
 
   renderWallpaper(width = 2560, height = 1440): string {
@@ -502,6 +619,27 @@ export class StarfieldEngine {
     }
     g.restore()
 
+    // 远景背景星系（哈勃深空场里的小小椭圆光斑）
+    for (let i = 0; i < 26; i++) {
+      const x = rand() * w
+      const y = rand() * h
+      const r = (rand() * 5 + 2) * scale
+      const a = rand() * 0.16 + 0.05
+      g.save()
+      g.translate(x, y)
+      g.rotate(rand() * Math.PI)
+      g.scale(1, 0.45 + rand() * 0.4)
+      const gradG = g.createRadialGradient(0, 0, 0, 0, 0, r)
+      gradG.addColorStop(0, `rgba(235,225,205,${a})`)
+      gradG.addColorStop(0.7, `rgba(190,200,235,${a * 0.5})`)
+      gradG.addColorStop(1, 'rgba(0,0,0,0)')
+      g.fillStyle = gradG
+      g.beginPath()
+      g.arc(0, 0, r, 0, Math.PI * 2)
+      g.fill()
+      g.restore()
+    }
+
     // 全天散布星尘（三层色温）
     const count = Math.floor((w * h) / (5200 * scale))
     for (let i = 0; i < count; i++) {
@@ -521,6 +659,15 @@ export class StarfieldEngine {
     vig.addColorStop(1, 'rgba(2,4,12,0.55)')
     g.fillStyle = vig
     g.fillRect(0, 0, w, h)
+
+    // 传感噪声（深空照片的胶片颗粒感）
+    const grainCount = Math.floor((w * h) / (1400 * scale))
+    for (let i = 0; i < grainCount; i++) {
+      const x = rand() * w
+      const y = rand() * h
+      g.fillStyle = `rgba(${rand() > 0.5 ? '255,255,255' : '0,0,0'},${rand() * 0.05})`
+      g.fillRect(x, y, scale, scale)
+    }
   }
 
   private screenX(i: number): number {
@@ -658,6 +805,20 @@ export class StarfieldEngine {
       this.cam.k += (this.camTarget.k - this.cam.k) * 0.08
       if (Math.abs(this.camTarget.x - this.cam.x) < 0.5) this.camTarget = null
     }
+    // 偶发流星：每 25–60s 一颗划过画布深处（v5 §0.5-④），reduced-motion 下循环不跑、永不生成
+    if (!this.meteor && performance.now() >= this.nextMeteorAt) {
+      const w = this.canvas.width / this.dpr
+      const h = this.canvas.height / this.dpr
+      const ang = Math.PI * (0.7 + Math.random() * 0.22)
+      this.meteor = {
+        x: w * (0.2 + Math.random() * 0.6),
+        y: h * (0.05 + Math.random() * 0.3),
+        dx: Math.cos(ang),
+        dy: Math.sin(ang),
+        born: performance.now()
+      }
+      this.nextMeteorAt = performance.now() + 25000 + Math.random() * 35000
+    }
     this.draw(now / 1000)
   }
 
@@ -685,39 +846,72 @@ export class StarfieldEngine {
       const hz = this.haze[hi]
       const hx = (hz.wx - this.cam.x) * this.cam.k + w / 2
       const hy = (hz.wy - this.cam.y) * this.cam.k + h / 2
-      const base = hz.r * this.cam.k
-      if (hx < -base * 2 || hx > w + base * 2 || hy < -base * 2 || hy > h + base * 2) continue
-      const jr = mulberry32(Math.floor(hz.wx * 7 + hz.wy * 13 + hi * 101))
-      for (let b = 0; b < 4; b++) {
-        const ox = (jr() - 0.5) * base * 0.9
-        const oy = (jr() - 0.5) * base * 0.7
-        const r = base * (0.45 + jr() * 0.5)
-        const col = b === 3 ? HAZE_PALETTE[(hi + 3) % HAZE_PALETTE.length] : hz.color
-        const grad = ctx.createRadialGradient(hx + ox, hy + oy, 0, hx + ox, hy + oy, Math.max(40, r))
-        grad.addColorStop(0, colorWithAlpha(col, b === 0 ? 0.085 : 0.05))
-        grad.addColorStop(1, 'rgba(0,0,0,0)')
-        ctx.fillStyle = grad
-        ctx.fillRect(hx + ox - r, hy + oy - r, r * 2, r * 2)
+      // ±2% 极慢呼吸（v5 §0.5-④）；气团用预渲染精灵，形态不规则如真实星云
+      const base = hz.r * this.cam.k * (this.reduced ? 1 : 1 + 0.02 * Math.sin(t * 0.5 + hi * 1.7))
+      if (hx < -base * 2.4 || hx > w + base * 2.4 || hy < -base * 2.4 || hy > h + base * 2.4) continue
+      const spr = this.nebulaSpriteFor(hi, hz.color)
+      const w2 = base * 4.6
+      ctx.globalAlpha = 0.9
+      ctx.drawImage(spr, hx - w2 / 2, hy - w2 / 2, w2, w2)
+    }
+    ctx.globalAlpha = 1
+
+    // 偶发流星：900ms 划过、淡入淡出（画布深处的「闪念」）
+    if (this.meteor) {
+      const p = (t * 1000 - this.meteor.born) / 900
+      if (p >= 1) {
+        this.meteor = null
+      } else {
+        const travel = Math.min(w, h) * 0.3
+        const mhx = this.meteor.x + this.meteor.dx * travel * p
+        const mhy = this.meteor.y + this.meteor.dy * travel * p
+        const tail = travel * 0.16
+        const a = Math.sin(Math.PI * Math.max(0, p))
+        const grad = ctx.createLinearGradient(
+          mhx,
+          mhy,
+          mhx - this.meteor.dx * tail,
+          mhy - this.meteor.dy * tail
+        )
+        grad.addColorStop(0, `rgba(255,244,214,${0.75 * a})`)
+        grad.addColorStop(1, 'rgba(255,244,214,0)')
+        ctx.globalAlpha = 1
+        ctx.strokeStyle = grad
+        ctx.lineWidth = 1.2
+        ctx.beginPath()
+        ctx.moveTo(mhx, mhy)
+        ctx.lineTo(mhx - this.meteor.dx * tail, mhy - this.meteor.dy * tail)
+        ctx.stroke()
       }
     }
 
-    // 共鸣星桥
+    // 共鸣星桥：随机相位呼吸——一条条思绪时隐时现（v5 §0.5-④）
     for (const e of this.edges) {
       const ai = this.byId.get(e.source as number)
       const bi = this.byId.get(e.target as number)
       if (ai === undefined || bi === undefined) continue
+      const base = e.kind === 'collision' ? 0.32 : e.kind === 'manual' ? 0.34 : 0.15
+      if (this.reduced) {
+        ctx.globalAlpha = base
+      } else {
+        const seed = (e.source as number) * 7919 + (e.target as number) * 104729
+        const period = 6 + (seed % 41) / 10 // 6–10s，各不相同
+        const phase = (seed % 628) / 100
+        ctx.globalAlpha = Math.max(0.03, base * (0.55 + 0.45 * Math.sin((t * Math.PI * 2) / period + phase)))
+      }
       ctx.strokeStyle =
         e.kind === 'collision'
-          ? 'rgba(255,110,110,0.4)'
+          ? 'rgb(255,110,110)'
           : e.kind === 'manual'
-            ? 'rgba(255,205,130,0.42)'
-            : 'rgba(150,175,255,0.22)'
+            ? 'rgb(255,205,130)'
+            : 'rgb(150,175,255)'
       ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(this.screenX(ai), this.screenY(ai))
       ctx.lineTo(this.screenX(bi), this.screenY(bi))
       ctx.stroke()
     }
+    ctx.globalAlpha = 1
 
     // 星
     for (let i = 0; i < this.nodes.length; i++) {
@@ -747,14 +941,6 @@ export class StarfieldEngine {
         if (n.spikes && this.cam.k > 0.55) {
           this.paintSpikes(ctx, sx, sy, size * 0.85, n.color, 0.4 * tw)
         }
-      }
-      if (n.star.is_gem) {
-        ctx.globalAlpha = 0.9
-        ctx.strokeStyle = 'rgba(255,209,102,0.85)'
-        ctx.lineWidth = 1
-        ctx.beginPath()
-        ctx.arc(sx, sy, n.r * this.cam.k + 6, 0, Math.PI * 2)
-        ctx.stroke()
       }
       if (this.multiSelected.has(n.id)) {
         ctx.globalAlpha = 1
@@ -797,6 +983,13 @@ export class StarfieldEngine {
       const rayA = 0.55 + 0.15 * Math.sin(t * 1.1 + n.phase)
       this.paintSpikes(ctx, sx, sy, base * 2.6, '#ffe8b0', rayA)
       this.paintSpikes(ctx, sx, sy, base * 1.5, '#ffe8b0', rayA * 0.6, Math.PI / 4)
+      // 镜头横向溢光（亮星过曝的水平 streak）
+      const streak = ctx.createLinearGradient(sx - base * 3.2, sy, sx + base * 3.2, sy)
+      streak.addColorStop(0, 'rgba(255,228,160,0)')
+      streak.addColorStop(0.5, `rgba(255,236,190,${0.24 + 0.1 * Math.sin(t * 1.3)})`)
+      streak.addColorStop(1, 'rgba(255,228,160,0)')
+      ctx.fillStyle = streak
+      ctx.fillRect(sx - base * 3.2, sy - 0.9, base * 6.4, 1.8)
       // 选中/圈选环
       if (n.id === this.selectedId || this.multiSelected.has(n.id)) {
         ctx.strokeStyle = 'rgba(255,235,180,0.95)'

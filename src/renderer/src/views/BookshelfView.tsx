@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import type { BookRecord } from '@shared/types'
 import ImportWizard from '../components/ImportWizard'
 import SyncDialog from '../components/SyncDialog'
+import { DUR, EASE_OUT, SPRING_SETTLE, STAGGER } from '../motion'
 
 const BOOK_COLORS = [
   '#ff9a5a', '#d9930d', '#8b5cf6', '#38bdf8',
@@ -51,7 +52,7 @@ export default function BookshelfView({
     <div className="h-full overflow-y-auto px-5 py-6 md:px-10 md:py-8">
       <header className="mb-7 flex items-center justify-between">
         <div>
-          <h1 className="text-[22px] font-semibold">书架</h1>
+          <h1 className="t-display">书架</h1>
           <p className="mt-0.5 text-[12.5px] text-[var(--text-dim)]">
             {books.length > 0
               ? `${books.length} 本书 · ${books.reduce((a, b) => a + (b.highlight_count ?? 0), 0)} 颗星`
@@ -96,10 +97,9 @@ export default function BookshelfView({
           {books.map((b, i) => (
             <motion.button
               key={b.id}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i * 0.045, 0.5), type: 'spring', stiffness: 260, damping: 24 }}
-              whileHover={{ y: -4 }}
+              initial={{ opacity: 0, y: 8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ ...SPRING_SETTLE, delay: Math.min(i * STAGGER, 0.4) }}
               whileTap={{ scale: 0.98 }}
               onClick={() => onOpenBook(b.id)}
               className="panel panel-hover group overflow-hidden p-0 text-left"
@@ -108,11 +108,11 @@ export default function BookshelfView({
                 className="h-[4px] w-full origin-left"
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
-                transition={{ delay: Math.min(i * 0.045, 0.5) + 0.15, duration: 0.5 }}
+                transition={{ delay: Math.min(i * STAGGER, 0.4) + 0.1, duration: DUR.slow, ease: EASE_OUT }}
                 style={{ background: `linear-gradient(90deg, ${b.color}, transparent)` }}
               />
               <div className="p-4">
-                <div className="truncate text-[14.5px] font-medium" title={b.title}>
+                <div className="truncate text-[14px] font-medium" title={b.title}>
                   {b.title}
                 </div>
                 <div className="mt-0.5 truncate text-[12px] text-[var(--text-dim)]">

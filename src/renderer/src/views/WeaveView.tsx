@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { ArticleRecord, AskSkyResult, NebulaRecord } from '@shared/types'
+import { DUR, EASE_OUT } from '../motion'
 
 export default function WeaveView() {
   const [mode, setMode] = useState<'weave' | 'ask'>('weave')
@@ -11,6 +12,8 @@ export default function WeaveView() {
   const [draft, setDraft] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
+  // 成文完成的材质化进场只在 AI 起草后播放一次（v5 §4.4）
+  const [justDrafted, setJustDrafted] = useState(false)
 
   // 与星空对话
   const [question, setQuestion] = useState('')
@@ -44,6 +47,7 @@ export default function WeaveView() {
       setArticles((prev) => [a, ...prev])
       setActive(a)
       setDraft(a.content_md)
+      setJustDrafted(true)
       setMsg('')
     } catch (err) {
       setMsg(`失败：${err instanceof Error ? err.message : String(err)}`)
@@ -86,11 +90,12 @@ export default function WeaveView() {
   }
 
   return (
-    <div className="h-full overflow-y-auto px-10 py-8">
+    <div className="h-full overflow-y-auto px-5 py-6 md:px-10 md:py-8">
       <header className="mb-5 flex items-center gap-4">
-        <h1 className="text-[22px] font-semibold">
-          ❋ 织星 <span className="ml-1 text-[13px] font-normal text-[var(--text-dim)]">笔记的终点是作品</span>
-        </h1>
+        <div>
+          <h1 className="t-display">织星</h1>
+          <p className="mt-0.5 text-[12.5px] text-[var(--text-dim)]">笔记的终点是作品</p>
+        </div>
         <div className="ml-auto flex rounded-lg border border-[var(--line)] p-0.5">
           {(
             [
@@ -111,6 +116,13 @@ export default function WeaveView() {
 
       {msg && <div className="mb-3 text-[12px] text-[var(--text-dim)]">{msg}</div>}
 
+      <motion.div
+        key={mode}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: DUR.base, ease: EASE_OUT }}
+        className="min-h-0"
+      >
       {mode === 'weave' ? (
         <div className="flex gap-5">
           {/* 星云与文章列表 */}
@@ -158,7 +170,7 @@ export default function WeaveView() {
                       }}
                     >
                       <div className="serif truncate">{a.title}</div>
-                      <div className="text-[10.5px] text-[var(--text-dim)]">
+                      <div className="text-[11px] text-[var(--text-dim)]">
                         v{a.version} · {a.updated_at.slice(0, 10)}
                       </div>
                     </button>
@@ -170,9 +182,25 @@ export default function WeaveView() {
 
           {/* 编辑器 */}
           <div className="panel min-w-0 flex-1 p-6">
-            {!active && <div className="mt-16 text-center text-[13px] text-[var(--text-dim)]">选一片星云，让星空自己长出第一篇文章</div>}
+            {!active && !busy && <div className="mt-16 text-center text-[13px] text-[var(--text-dim)]">选一片星云，让星空自己长出第一篇文章</div>}
+            {busy && (
+              <div className="mt-2 space-y-4" aria-hidden>
+                <div className="shimmer h-6 w-1/3 rounded-md" />
+                <div className="shimmer h-4 w-full rounded-md" />
+                <div className="shimmer h-4 w-11/12 rounded-md" />
+                <div className="shimmer h-4 w-4/5 rounded-md" />
+                <div className="shimmer h-4 w-full rounded-md" />
+                <div className="shimmer h-4 w-2/3 rounded-md" />
+              </div>
+            )}
             {active && (
-              <>
+              <motion.div
+                key={active.id}
+                initial={justDrafted ? { opacity: 0, filter: 'blur(2px)' } : false}
+                animate={{ opacity: 1, filter: 'blur(0px)' }}
+                transition={{ duration: DUR.delight, ease: EASE_OUT }}
+                onAnimationComplete={() => setJustDrafted(false)}
+              >
                 <input
                   className="w-full bg-transparent text-[17px] font-medium outline-none"
                   value={active.title}
@@ -203,7 +231,7 @@ export default function WeaveView() {
                     删除
                   </button>
                 </div>
-              </>
+              </motion.div>
             )}
           </div>
         </div>
@@ -223,14 +251,19 @@ export default function WeaveView() {
             </button>
           </div>
           {answer && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="panel mt-5 p-6">
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: DUR.slow, ease: EASE_OUT }}
+              className="panel mt-5 p-6"
+            >
               <div className="serif text-[14px] leading-8">{answer.answer}</div>
               <h3 className="mt-5 text-[12px] tracking-wide text-[var(--text-dim)]">出处星链</h3>
               <div className="mt-2 space-y-2">
                 {answer.cites.map((c) => (
                   <div key={c.id} className="rounded-lg border border-[var(--line)] px-3 py-2 text-[12px]">
                     <div className="serif line-clamp-2 leading-6">{c.content}</div>
-                    <div className="mt-0.5 text-[10.5px] text-[var(--text-dim)]">《{c.book}》{c.chapter}</div>
+                    <div className="mt-0.5 text-[11px] text-[var(--text-dim)]">《{c.book}》{c.chapter}</div>
                   </div>
                 ))}
               </div>
@@ -244,6 +277,7 @@ export default function WeaveView() {
           )}
         </div>
       )}
+      </motion.div>
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { CapsuleRecord, MeteorToday } from '@shared/types'
 import NightFlight from '../components/NightFlight'
+import { DUR, EASE_OUT, SPRING_SETTLE } from '../motion'
 
 export default function MeteorView() {
   const [meteor, setMeteor] = useState<MeteorToday | null>(null)
@@ -29,20 +30,20 @@ export default function MeteorView() {
   const due = pending.filter((c) => c.deliver_at <= meteor?.date!)
 
   return (
-    <div className="relative h-full overflow-y-auto px-10 py-8">
-      {/* 流星划过动画 */}
+    <div className="relative h-full overflow-y-auto px-5 py-6 md:px-10 md:py-8">
+      {/* 流星划过动画（稀有面的环境一笔；MotionConfig reducedMotion 自动降级） */}
       <motion.div
         initial={{ x: '-20vw', y: '-10vh', opacity: 0 }}
         animate={{ x: '60vw', y: '30vh', opacity: [0, 1, 1, 0] }}
-        transition={{ duration: 2.2, ease: 'easeOut' }}
-        className="pointer-events-none absolute right-0 top-0 h-px w-[160px] rotate-[24deg] bg-gradient-to-l from-[#dd5b00] via-[rgba(240,150,60,0.85)] to-transparent"
+        transition={{ duration: 2.2, ease: EASE_OUT }}
+        className="pointer-events-none absolute right-0 top-0 z-10 h-px w-[160px] rotate-[24deg] bg-gradient-to-l from-[#dd5b00] via-[rgba(240,150,60,0.85)] to-transparent"
         style={{ boxShadow: '0 0 12px rgba(221,91,0,0.7)' }}
       />
 
       <header className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-[22px] font-semibold">
-            ☄ 今日流星 <span className="ml-1 text-[13px] font-normal text-[var(--text-dim)]">{meteor?.date}</span>
+          <h1 className="t-display">
+            今日流星 <span className="ml-1 text-[13px] font-normal text-[var(--text-dim)]">{meteor?.date}</span>
           </h1>
           <p className="mt-0.5 text-[12.5px] text-[var(--text-dim)]">不教你记住，只帮你重逢</p>
         </div>
@@ -55,8 +56,9 @@ export default function MeteorView() {
       {meteor?.star ? (
         <motion.div
           key={meteor.star.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 8, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={SPRING_SETTLE}
           className="panel mx-auto max-w-[720px] p-8 text-center"
         >
           {meteor.source === 'capsule' && (

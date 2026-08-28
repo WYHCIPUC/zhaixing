@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { toast } from 'sonner'
 import type { BookRecord, HighlightRecord, ThoughtRecord } from '@shared/types'
 import { colorFor } from './BookshelfView'
+import { CAN_HOVER, DUR, EASE_OUT, SPRING_SETTLE, STAGGER } from '../motion'
 
 type NoteFilter = 'all' | 'fav' | 'thought'
 
@@ -160,12 +161,12 @@ export default function BookDetailView({
     <div className="relative flex h-full flex-col">
       {/* 顶部 */}
       <header className="border-b border-[var(--line)] px-10 pb-4 pt-6">
-        <button className="btn px-2 py-1 text-[12px]" onClick={onBack}>
+        <button className="btn btn-sm px-2" onClick={onBack}>
           ← 书架
         </button>
         <div className="mt-3 flex items-start gap-4">
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-[21px] font-semibold">
+            <h1 className="t-display truncate">
               《{book.title}》
               <span className="ml-3 text-[13px] font-normal text-[var(--text-dim)]">{book.author}</span>
             </h1>
@@ -174,9 +175,9 @@ export default function BookDetailView({
                 {[1, 2, 3, 4, 5].map((n) => (
                   <motion.span
                     key={n}
-                    whileHover={{ scale: 1.35, rotate: n % 2 === 0 ? 8 : -8 }}
+                    whileHover={CAN_HOVER ? { scale: 1.15 } : undefined}
                     whileTap={{ scale: 0.85 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                    transition={{ type: 'spring', duration: 0.3, bounce: 0 }}
                     onClick={() => void saveRating(n === book.rating ? 0 : n)}
                     className={`inline-block ${n <= book.rating ? 'star-mark' : 'opacity-30 hover:opacity-70'}`}
                   >
@@ -206,9 +207,12 @@ export default function BookDetailView({
             </button>
           </div>
         </div>
-        {/* 镇星之宝 */}
+        {/* 镇星之宝（材质化揭示，稀有时刻 v5 §4.5-4） */}
         {gem && (
-          <button
+          <motion.button
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: DUR.delight, ease: EASE_OUT }}
             className="serif mt-3 block max-w-[640px] rounded-lg border border-[rgba(251,191,36,0.35)] bg-[rgba(251,191,36,0.06)] px-4 py-2 text-left text-[12.5px] italic leading-7"
             onClick={() => {
               setFilter('all')
@@ -226,7 +230,7 @@ export default function BookDetailView({
           >
             <span className="star-mark mr-1.5 not-italic">★ 镇星之宝</span>
             {gem.content.length > 80 ? gem.content.slice(0, 80) + '…' : gem.content}
-          </button>
+          </motion.button>
         )}
         {/* 短评 */}
         <div className="mt-3">
@@ -256,7 +260,7 @@ export default function BookDetailView({
       </header>
 
       {/* 渐进披露：密度概览 → 展开章节 */}
-      <div className="flex-1 overflow-y-auto px-10 py-6">
+      <div className="flex-1 overflow-y-auto px-5 py-6 md:px-10">
         {stars.length === 0 && (
           <div className="mt-20 text-center text-[var(--text-dim)]">这本书还没有星星</div>
         )}
@@ -282,14 +286,15 @@ export default function BookDetailView({
                 {chapters.length} 个章节 · 点击章节行展开划线
               </span>
               <button
-                className="btn px-2 py-0.5 text-[11.5px]"
+                className="btn btn-sm px-2"
                 onClick={() => setExpanded(allExpanded ? new Set() : new Set(chapters.map(([c]) => c)))}
               >
                 {allExpanded ? '全部收起' : '全部展开'}
               </button>
             </div>
 
-            {/* 章节密度概览 + 折叠列表 */}
+            {/* 章节密度概览 + 折叠列表（过滤切换时 200ms 交叉淡入，避免瞬移） */}
+            <motion.div key={filter} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: DUR.base, ease: EASE_OUT }}>
             {chapters.map(([chapter, list]) => {
               const open = effectiveExpanded.has(chapter)
               return (
@@ -298,21 +303,25 @@ export default function BookDetailView({
                     className="group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-[var(--surface-2)]"
                     onClick={() => toggleChapter(chapter)}
                   >
-                    <span className="w-3 text-[10px] text-[var(--text-dim)]">{open ? '▾' : '▸'}</span>
+                    <span className="w-3 text-[11px] text-[var(--text-dim)]">{open ? '▾' : '▸'}</span>
                     <h2 className="min-w-0 max-w-[340px] truncate text-[13px] font-medium" title={chapter}>
                       {chapter}
                     </h2>
                     <span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] text-[var(--accent)]">
                       {list.length}
                     </span>
-                    {/* 密度条 */}
+                    {/* 密度条（scaleX 合成器动画，不动布局） */}
                     <div className="hidden h-[6px] min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--surface-2)] md:block">
                       <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(list.length / maxChapterCount) * 100}%` }}
-                        transition={{ duration: 0.5, ease: 'easeOut' }}
-                        className="h-full rounded-full"
-                        style={{ background: `linear-gradient(90deg, ${color}88, ${color})` }}
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: 1 }}
+                        transition={{ duration: DUR.slow, ease: EASE_OUT, delay: 0.05 }}
+                        className="h-full w-full rounded-full"
+                        style={{
+                          background: `linear-gradient(90deg, ${color}88, ${color})`,
+                          transformOrigin: 'left',
+                          width: `${(list.length / maxChapterCount) * 100}%`
+                        }}
                       />
                     </div>
                   </button>
@@ -321,8 +330,8 @@ export default function BookDetailView({
                       <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.22, ease: 'easeOut' }}
+                        exit={{ height: 0, opacity: 0, transition: { duration: DUR.fast, ease: EASE_OUT } }}
+                        transition={{ duration: DUR.base, ease: EASE_OUT }}
                         className="overflow-hidden"
                       >
                         <div className="space-y-3 px-2 pb-4 pt-2">
@@ -349,6 +358,7 @@ export default function BookDetailView({
                 </section>
               )
             })}
+            </motion.div>
           </>
         )}
       </div>
@@ -358,13 +368,14 @@ export default function BookDetailView({
         <motion.div
           initial={{ y: 40, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: DUR.slow, ease: EASE_OUT }}
           className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-[rgba(221,91,0,0.4)]  px-5 py-2.5 shadow-xl"
         >
           <span className="text-[13px]">已选 {selected.size} 颗星</span>
-          <button className="btn btn-primary py-1" disabled={selected.size < 2} onClick={beginMerge}>
+          <button className="btn btn-sm btn-primary" disabled={selected.size < 2} onClick={beginMerge}>
             合并碎片
           </button>
-          <button className="btn py-1" onClick={() => setSelected(new Set())}>
+          <button className="btn btn-sm" onClick={() => setSelected(new Set())}>
             取消
           </button>
         </motion.div>
@@ -376,6 +387,7 @@ export default function BookDetailView({
           <motion.div
             initial={{ scale: 0.96, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
+            transition={SPRING_SETTLE}
             className="panel w-[640px]  p-6"
           >
             <div className="text-[15px] font-medium">合并 {selected.size} 颗星</div>
@@ -465,9 +477,9 @@ function StarCard({
     <motion.div
       layout
       id={`star-${star.id}`}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.04, 0.4), type: 'spring', stiffness: 280, damping: 26 }}
+      initial={{ opacity: 0, y: 8, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ ...SPRING_SETTLE, delay: Math.min(index * STAGGER, 0.32) }}
       className={`panel group relative p-4 transition-colors ${selected ? 'border-[rgba(221,91,0,0.55)]' : ''}`}
     >
       <div
@@ -492,11 +504,11 @@ function StarCard({
                 onChange={(e) => setContent(e.target.value)}
               />
               <div className="mt-2 flex gap-2">
-                <button className="btn btn-primary py-1" onClick={() => void saveContent()}>
+                <button className="btn btn-sm btn-primary" onClick={() => void saveContent()}>
                   保存
                 </button>
                 <button
-                  className="btn py-1"
+                  className="btn btn-sm"
                   onClick={() => {
                     setContent(star.content)
                     setEditing(false)
@@ -528,7 +540,7 @@ function StarCard({
                       />
                       <div className="mt-1 flex gap-2">
                         <button
-                          className="btn py-0.5 text-[12px]"
+                          className="btn btn-sm"
                           onClick={async () => {
                             await window.api.updateThought(t.id, editingThought.content.trim())
                             setEditingThought(null)
@@ -537,7 +549,7 @@ function StarCard({
                         >
                           存
                         </button>
-                        <button className="btn py-0.5 text-[12px]" onClick={() => setEditingThought(null)}>
+                        <button className="btn btn-sm" onClick={() => setEditingThought(null)}>
                           取消
                         </button>
                       </div>
@@ -576,7 +588,7 @@ function StarCard({
               onChange={(e) => setThoughtDraft(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && void addThought()}
             />
-            <button className="btn py-1 text-[12px]" onClick={() => void addThought()} disabled={!thoughtDraft.trim()}>
+            <button className="btn btn-sm" onClick={() => void addThought()} disabled={!thoughtDraft.trim()}>
               记下
             </button>
           </div>
@@ -619,9 +631,10 @@ function StarCard({
         </div>
 
         <motion.button
-          whileHover={{ scale: 1.3 }}
-          whileTap={{ scale: 0.8, rotate: 20 }}
-          transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+          initial={false}
+          animate={star.favorite ? { scale: [1, 1.3, 1], rotate: [0, 10, 0] } : { scale: 1, rotate: 0 }}
+          whileTap={{ scale: 0.88 }}
+          transition={{ duration: DUR.delight, ease: EASE_OUT }}
           className={`shrink-0 text-[16px] ${star.favorite ? 'star-mark' : 'opacity-25 hover:opacity-70'}`}
           onClick={onToggleFavorite}
           title="星标收藏"

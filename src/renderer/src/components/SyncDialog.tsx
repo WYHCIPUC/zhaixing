@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { RefreshCw } from 'lucide-react'
 import type { WereadNotebook, WereadSyncReport } from '@shared/types'
+import { SPRING_SETTLE } from '../motion'
 
 interface RowState {
   status: 'idle' | 'busy' | 'done' | 'error'
@@ -62,6 +63,7 @@ export default function SyncDialog({
       <motion.div
         initial={{ scale: 0.96, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
+        transition={SPRING_SETTLE}
         className="panel flex max-h-[86vh] w-[760px] max-w-[92vw] flex-col overflow-hidden "
       >
         <header className="flex items-center justify-between border-b border-[var(--line)] px-6 py-4">
@@ -80,7 +82,7 @@ export default function SyncDialog({
               </span>
             )}
           </div>
-          <button className="btn px-2 py-1" onClick={onClose}>
+          <button className="btn btn-sm px-2" onClick={onClose}>
             ✕
           </button>
         </header>
@@ -115,7 +117,7 @@ export default function SyncDialog({
                       )}
                     </div>
                     <button
-                      className="btn shrink-0 py-1 text-[12px]"
+                      className="btn btn-sm shrink-0"
                       disabled={st.status === 'busy'}
                       onClick={() => void syncOne(b.bookId)}
                     >

@@ -91,7 +91,7 @@ export default function YearReplay({ onClose }: { onClose: () => void }) {
       <canvas ref={canvasRef} className="h-[68vh] w-[86vw] rounded-xl border border-[var(--line)]" />
       <div className="mt-4 flex gap-3 text-[12px] text-[var(--text-dim)]">
         <button
-          className="btn py-1"
+          className="btn btn-sm"
           onClick={(e) => {
             e.stopPropagation()
             setPlaying((p) => !p)
@@ -100,7 +100,7 @@ export default function YearReplay({ onClose }: { onClose: () => void }) {
           {playing ? '暂停' : '重播'}
         </button>
         <button
-          className="btn py-1"
+          className="btn btn-sm"
           onClick={async (e) => {
             e.stopPropagation()
             const canvas = canvasRef.current
@@ -111,7 +111,7 @@ export default function YearReplay({ onClose }: { onClose: () => void }) {
         >
           ⬇ 存为图片
         </button>
-        <button className="btn py-1" onClick={onClose}>
+        <button className="btn btn-sm" onClick={onClose}>
           关闭（Esc）
         </button>
       </div>

@@ -44,7 +44,7 @@ export default function LinkReview({
         <div className="text-[14px] font-medium">
           连线审核 <span className="ml-1 text-[12px] text-[var(--text-dim)]">AI 提议，你盖章</span>
         </div>
-        <button className="btn px-2 py-0.5" onClick={onClose}>
+        <button className="btn btn-sm px-2" onClick={onClose}>
           ✕
         </button>
       </header>
@@ -76,7 +76,7 @@ export default function LinkReview({
                     onClose()
                   }}
                 >
-                  <div className="text-[10.5px] text-[var(--text-dim)]">{i === 0 ? l.from_book : l.to_book}</div>
+                  <div className="text-[11px] text-[var(--text-dim)]">{i === 0 ? l.from_book : l.to_book}</div>
                   <div className="serif line-clamp-3 text-[12.5px] leading-6">
                     {i === 0 ? l.from_content : l.to_content}
                   </div>
@@ -88,10 +88,10 @@ export default function LinkReview({
                 </div>
               )}
               <div className="mt-3 flex gap-2">
-                <button className="btn btn-primary py-1 text-[12px]" onClick={() => void decide(l.id, 'confirmed')}>
+                <button className="btn btn-sm btn-primary" onClick={() => void decide(l.id, 'confirmed')}>
                   ✓ 确认连线
                 </button>
-                <button className="btn py-1 text-[12px]" onClick={() => void decide(l.id, 'dismissed')}>
+                <button className="btn btn-sm" onClick={() => void decide(l.id, 'dismissed')}>
                   忽略
                 </button>
               </div>

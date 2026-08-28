@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { HighlightRecord } from '@shared/types'
+import { DUR, EASE_OUT } from '../motion'
 
 // 夜航模式：全屏沉浸，方向键在星间漫游，无打卡无压力
 export default function NightFlight({ onClose }: { onClose: () => void }) {
@@ -66,8 +67,8 @@ export default function NightFlight({ onClose }: { onClose: () => void }) {
             key={star.id}
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.35 }}
+            exit={{ opacity: 0, y: -10, transition: { duration: DUR.base, ease: EASE_OUT } }}
+            transition={{ duration: 0.35, ease: EASE_OUT }}
             className="max-w-[760px] px-12 text-center"
           >
             <div className="serif text-[19px] leading-[2.2]">{star.content}</div>
@@ -89,7 +90,7 @@ export default function NightFlight({ onClose }: { onClose: () => void }) {
 
       <div className="absolute bottom-10 flex items-center gap-6 text-[12px] text-[var(--text-dim)]">
         <span>← → 换一颗</span>
-        <button className="btn btn-primary py-1" onClick={() => void revisit()} disabled={!star}>
+        <button className="btn btn-sm btn-primary" onClick={() => void revisit()} disabled={!star}>
           ✦ 重逢过了，下一颗
         </button>
         <span>Esc 离开夜航</span>

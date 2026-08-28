@@ -134,6 +134,12 @@ body {
   border-color: var(--line-strong);
   box-shadow: var(--shadow-md);
 }
+/* 触屏不触发抬升（v5 §7：hover 动效门控） */
+@media (hover: none) {
+  .panel-hover:hover {
+    transform: none;
+  }
+}
 
 /* ---------- 按钮（Notion：8px 圆角，主/次两级） ---------- */
 
@@ -175,9 +181,31 @@ body {
 .btn-primary:active {
   background: #c24f00;
 }
+/* 危险操作：幽灵红，不用填充底（Notion 式破坏性按钮） */
+.btn-danger {
+  color: var(--error);
+  border-color: rgba(224, 49, 49, 0.35);
+}
+.btn-danger:hover {
+  background: rgba(224, 49, 49, 0.06);
+  border-color: rgba(224, 49, 49, 0.55);
+}
+.btn-danger:active {
+  background: rgba(224, 49, 49, 0.12);
+}
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+/* 工具条/行内紧凑按钮（v5 视觉规范：次级小按钮统一走这里，不再散落 py-1 text-[12px]） */
+.btn-sm {
+  padding: 3px 10px;
+  font-size: 12px;
+  gap: 5px;
+}
+.btn-sm svg {
+  width: 13px;
+  height: 13px;
 }
 
 .input {
@@ -298,6 +326,21 @@ select:focus-visible {
 }
 .twinkle {
   animation: twinkle 2.8s ease-in-out infinite;
+}
+
+/* 骨架屏 shimmer（v5 §4.4：按布局尺寸占位，reduce-motion 时静止为灰块） */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+.shimmer {
+  background: linear-gradient(90deg, var(--surface-2) 35%, #efedea 50%, var(--surface-2) 65%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
 }
 
 .star-mark {

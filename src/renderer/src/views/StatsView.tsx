@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { animate, motion } from 'framer-motion'
 import type { DailyCount, SpiritSpectrum } from '@shared/types'
 import YearReplay from '../components/YearReplay'
+import { DUR, EASE_OUT, STAGGER } from '../motion'
 
-// 数字滚动
+// 数字滚动（v5 §4.4：收敛到 --dur-3，缓动统一）
 function CountUp({ value }: { value: number }): React.ReactElement {
   const [n, setN] = useState(0)
   useEffect(() => {
     const controls = animate(0, value, {
-      duration: 0.9,
-      ease: [0.16, 1, 0.3, 1],
+      duration: DUR.slow,
+      ease: EASE_OUT,
       onUpdate: (v) => setN(Math.round(v))
     })
     return () => controls.stop()
@@ -57,9 +58,12 @@ export default function StatsView() {
   const maxTheme = Math.max(1, ...themes.map((t) => t.count))
 
   return (
-    <div className="h-full overflow-y-auto px-10 py-8">
+    <div className="h-full overflow-y-auto px-5 py-6 md:px-10 md:py-8">
       <header className="mb-6 flex items-center justify-between">
-        <h1 className="text-[22px] font-semibold">▤ 统计</h1>
+        <div>
+          <h1 className="t-display">统计</h1>
+          <p className="mt-0.5 text-[12.5px] text-[var(--text-dim)]">你的星空，长成了什么形状</p>
+        </div>
         <button className="btn btn-primary" disabled={!overview || overview.highlightCount === 0} onClick={() => setReplayOpen(true)}>
           ▶ 年度星空回放
         </button>
@@ -78,12 +82,12 @@ export default function StatsView() {
         ).map(([label, value], i) => (
           <motion.div
             key={String(label)}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06 }}
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ delay: i * STAGGER, duration: DUR.slow, ease: EASE_OUT }}
             className="panel panel-hover px-4 py-3 text-center"
           >
-            <div className="text-[24px] font-semibold text-[var(--accent)]">
+            <div className="text-[24px] font-semibold text-[var(--text)]">
               {value === undefined ? '–' : <CountUp value={value} />}
             </div>
             <div className="text-[11px] text-[var(--text-dim)]">{label}</div>
@@ -108,9 +112,10 @@ export default function StatsView() {
                 <span className="w-24 truncate text-right text-[var(--text-dim)]">{t.name}</span>
                 <div className="h-3 flex-1 overflow-hidden rounded-full bg-[rgba(146,116,67,0.08)]">
                   <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(t.count / maxTheme) * 100}%` }}
-                    transition={{ duration: 0.6 }}
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ duration: DUR.slow, ease: EASE_OUT, delay: 0.05 }}
+                    style={{ width: `${(t.count / maxTheme) * 100}%`, transformOrigin: 'left' }}
                     className="h-full rounded-full bg-[#dd5b00]"
                   />
                 </div>
@@ -125,7 +130,7 @@ export default function StatsView() {
       <section className="panel mt-5 p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-[13px] font-medium">✧ 精神光谱</h2>
-          <button className="btn py-1 text-[12px]" disabled={spiritBusy} onClick={() => void runSpirit(spirit !== null)}>
+          <button className="btn btn-sm" disabled={spiritBusy} onClick={() => void runSpirit(spirit !== null)}>
             {spiritBusy ? '分析中…' : spirit ? '重新分析' : 'AI 分析我的阅读画像'}
           </button>
         </div>
@@ -137,7 +142,7 @@ export default function StatsView() {
               <div className="serif mt-2 max-w-[380px] text-[13px] italic leading-7 text-[var(--text-dim)]">
                 {spirit.type_desc}
               </div>
-              <div className="mt-2 text-[10.5px] opacity-50">生成于 {spirit.generated_at}</div>
+              <div className="mt-2 text-[11px] opacity-50">生成于 {spirit.generated_at}</div>
             </div>
           </div>
         ) : (
@@ -190,7 +195,7 @@ function HeatMap({ daily }: { daily: DailyCount[] }): React.ReactElement {
               key={cell.date}
               title={`${cell.date} · ${cell.count} 颗星`}
               className="cell-in h-[11px] w-[11px] rounded-[2px]"
-              style={{ background: color(cell.count), animationDelay: `${(w * 7 + d) * 0.004}s` }}
+              style={{ background: color(cell.count), animationDelay: `${Math.min((w * 7 + d) * 0.004, 0.45)}s` }}
             />
           ))}
         </div>
@@ -229,7 +234,7 @@ function Radar({ spectrum }: { spectrum: SpiritSpectrum['spectrum'] }): React.Re
         strokeWidth={1.5}
         style={{
           transformOrigin: '100px 100px',
-          animation: 'radar-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both'
+          animation: 'radar-in 0.28s cubic-bezier(0.23, 1, 0.32, 1) both'
         }}
       />
       {spectrum.map((s, i) => {

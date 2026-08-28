@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Database } from 'lucide-react'
 import { toast } from 'sonner'
 import type { AiTestResult } from '@shared/types'
+import { DUR, EASE_OUT } from '../motion'
 
 const FIELDS: { key: string; label: string; placeholder: string; password?: boolean; hint?: string }[] = [
   {
@@ -68,10 +69,18 @@ export default function SettingsView() {
   }
 
   return (
-    <div className="h-full overflow-y-auto px-10 py-8">
-      <motion.h1 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-[22px] font-semibold">
-        设置
-      </motion.h1>
+    <div className="h-full overflow-y-auto px-5 py-6 md:px-10 md:py-8">
+      <div>
+        <motion.h1
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: DUR.base, ease: EASE_OUT }}
+          className="t-display"
+        >
+          设置
+        </motion.h1>
+        <p className="mt-0.5 text-[12.5px] text-[var(--text-dim)]">钥匙与数据都只属于你，存放在本机</p>
+      </div>
 
       <section className="panel mt-6 max-w-[720px] p-6">
         <h2 className="text-[15px] font-medium">
@@ -139,6 +148,20 @@ export default function SettingsView() {
             </div>
           ))}
           {archives.length === 0 && <div className="text-[12px] opacity-60">还没有导入记录</div>}
+        </div>
+      </section>
+
+      <section className="panel mt-5 max-w-[720px] p-6">
+        <h2 className="text-[15px] font-medium">关于</h2>
+        <div className="mt-3 space-y-1.5 text-[12.5px] leading-6 text-[var(--text-dim)]">
+          <div className="text-[13px] text-[var(--text)]">
+            <span className="star-mark mr-1.5">✦</span>摘星实录
+            <span className="ml-2 rounded border border-[var(--line)] px-1.5 py-0.5 text-[11px] tabular-nums">
+              v{__APP_VERSION__}
+            </span>
+          </div>
+          <div>不教你记住，只帮你重逢。划线、想法与 AI 配置全部保存在本机。</div>
+          <div>开源 · MIT License · GitHub：WYHCIPUC/zhaixing</div>
         </div>
       </section>
     </div>

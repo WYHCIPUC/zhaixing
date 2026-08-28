@@ -6,6 +6,7 @@ declare global {
   interface Window {
     api: ZhaixingApi
   }
+  const __APP_VERSION__: string
 }
 
 export {}

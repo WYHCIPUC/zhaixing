@@ -12,15 +12,16 @@ export default function Hint({
   side?: 'top' | 'bottom' | 'left' | 'right'
 }) {
   return (
-    <Tooltip.Provider delayDuration={280}>
+    <Tooltip.Provider delayDuration={280} skipDelayDuration={300}>
       <Tooltip.Root>
         <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
         <Tooltip.Portal>
           <Tooltip.Content side={side} sideOffset={8} asChild>
             <motion.div
-              initial={{ opacity: 0, scale: 0.94, y: side === 'top' ? 3 : -3 }}
+              initial={{ opacity: 0, scale: 0.97, y: side === 'top' ? 3 : -3 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ duration: 0.14, ease: [0.2, 0, 0, 1] }}
+              transition={{ duration: 0.125, ease: [0.23, 1, 0.32, 1] }}
+              style={{ transformOrigin: side === 'top' ? 'bottom' : 'top' }}
               className="rounded-md bg-[#2b2723] px-2.5 py-1.5 text-[11.5px] font-medium text-[#faf8f5] shadow-[0_4px_16px_rgba(43,39,35,0.3)]"
             >
               {label}

@@ -1,6 +1,5 @@
 // 移动端壳：窄屏（<md）顶栏 + 底部导航，替代桌面侧边栏（App.tsx 控制 md 显隐）
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
 import { BarChart3, BookOpen, Feather, MoonStar, Search, Settings, Sparkles } from 'lucide-react'
 import type { OverviewStats } from '@shared/types'
 import type { ViewKey } from '../App'
@@ -25,7 +24,7 @@ export function MobileTopBar({ onSearch }: { onSearch: () => void }): React.JSX.
     <header className="flex items-center justify-between border-b border-[var(--line)] bg-white px-4 py-2.5 md:hidden">
       <div className="flex items-baseline gap-2">
         <span className="text-[16px] font-semibold tracking-wide">
-          <span className="star-mark twinkle mr-1 inline-block">✦</span>
+          <span className="star-mark mr-1 inline-block">✦</span>
           摘星<span className="text-[var(--text-dim)]">实录</span>
         </span>
         {stats && (
@@ -61,17 +60,11 @@ export function MobileBottomNav({
           <button
             key={n.key}
             onClick={() => onNavigate(n.key)}
-            className={`relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[10.5px] transition-colors ${
+            className={`relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] transition-colors ${
               active ? 'text-[var(--accent)]' : 'text-[var(--text-dim)]'
             }`}
           >
-            {active && (
-              <motion.span
-                layoutId="mobile-nav-active"
-                transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                className="absolute inset-x-3 top-0 h-[2px] rounded-full bg-[var(--accent)]"
-              />
-            )}
+            {active && <span className="absolute inset-x-3 top-0 h-[2px] rounded-full bg-[var(--accent)]" />}
             <Icon size={19} strokeWidth={active ? 2.2 : 1.7} />
             {n.label}
           </button>

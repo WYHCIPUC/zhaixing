@@ -10,6 +10,10 @@ export const EASE_DRAWER: [number, number, number, number] = [0.32, 0.72, 0, 1]
 export const DUR = { fast: 0.12, base: 0.2, slow: 0.28, delight: 0.45 } as const
 export const STAGGER = 0.04
 
+/** 触屏不触发 hover 动效（v5 §7：framer 的 whileHover 无法用 CSS 媒体查询门控，需手动判断） */
+export const CAN_HOVER =
+  typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches
+
 /** 默认弹簧：无弹跳 —— 抽屉/面板/布局变化 */
 export const SPRING_SETTLE: Transition = { type: 'spring', duration: 0.4, bounce: 0 }
 /** 手势释放弹簧：轻微 bounce —— 仅跟手手势的释放（v5 §3.1） */

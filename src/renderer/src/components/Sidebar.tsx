@@ -55,7 +55,7 @@ export default function Sidebar({
             <Hint key={n.key} label={n.label} side="right">
               <button
                 onClick={() => onNavigate(n.key)}
-                className={`relative flex w-full items-center rounded-lg py-2 pl-4 pr-3 text-left text-[13.5px] font-medium transition-colors ${
+                className={`group relative flex w-full items-center rounded-lg py-2 pl-4 pr-3 text-left text-[13.5px] font-medium transition-colors ${
                   active
                     ? 'bg-[var(--surface-2)] text-[var(--text)]'
                     : 'text-[var(--text-dim)] hover:bg-[rgba(15,15,15,0.03)] hover:text-[var(--text)]'
@@ -63,11 +63,12 @@ export default function Sidebar({
               >
                 <span
                   aria-hidden
-                  className="absolute left-0 top-1/2 w-[3px] -translate-y-1/2 rounded-full"
+                  className={`absolute left-0 top-1/2 w-[3px] -translate-y-1/2 rounded-full transition-opacity ${
+                    active ? 'opacity-100' : 'opacity-40 group-hover:opacity-75'
+                  }`}
                   style={{
                     background: n.spine,
-                    height: active ? '58%' : '10px',
-                    opacity: active ? 1 : 0.4
+                    height: active ? '58%' : '10px'
                   }}
                 />
                 <span
