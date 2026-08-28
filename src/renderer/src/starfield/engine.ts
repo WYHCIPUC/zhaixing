@@ -1,16 +1,6 @@
-import {
-  forceCollide,
-  forceLink,
-  forceManyBody,
-  forceSimulation,
-  forceX,
-  forceY,
-  type SimulationLinkDatum,
-  type SimulationNodeDatum
-} from 'd3-force'
 import type { StarMapData, StarMapStar } from '@shared/types'
 
-interface Node extends SimulationNodeDatum {
+interface Node {
   id: number
   star: StarMapStar
   r: number
@@ -18,14 +8,23 @@ interface Node extends SimulationNodeDatum {
   phase: number
   bright: number
   spikes: boolean
+  x: number
+  y: number
 }
 
-type Edge = SimulationLinkDatum<Node> & { kind: string }
+type Edge = { source: number; target: number; kind: string }
 
 export interface EngineCallbacks {
   onHover: (star: StarMapStar | null, sx: number, sy: number) => void
   onSelect: (star: StarMapStar | null) => void
   onMultiSelect: (ids: number[]) => void
+}
+
+interface Core {
+  wx: number
+  wy: number
+  mass: number
+  spin: 1 | -1
 }
 
 interface Haze {
@@ -35,7 +34,14 @@ interface Haze {
   color: string
 }
 
-// 星云辉光色板（深空底上柔和可见）
+// ---------------- 物理常量（px / s 单位制，模拟真实引力体系） ----------------
+const GRAVITY = 6.5 // G：引力常数
+const SOFTENING = 26 // ε：软化项，避免近距离奇点（真实宇宙中恒星间距远大于恒星半径）
+const PHYSICS_DT = 1 / 30 // 物理定步长 30Hz（与渲染帧率解耦）
+const BOUNDARY = 2600 // 软边界：逃逸的星会被极微弱的潮汐拉回
+const CORE_SOFTENING = 70 // 星云核心（超大质量体）的软化距离
+
+// 星云辉光色板
 const HAZE_PALETTE = ['#6d8bff', '#a78bfa', '#ff8f8f', '#5fd4b6', '#ffd08a', '#f0a3ff', '#7fd0ff', '#ffa057']
 
 function mulberry32(seed: number): () => number {
@@ -96,10 +102,23 @@ export class StarfieldEngine {
   private highlightIds = new Set<number>()
   private selectMode = false
   private multiSelected = new Set<number>()
-  private byId = new Map<number, Node>()
-  private sim = forceSimulation<Node>()
+  private byId = new Map<number, number>() // star id -> 物理数组下标
   private cb: EngineCallbacks
   private ro: ResizeObserver
+
+  // ---- N 体物理状态（SoA 结构，Float32 便于 JIT）----
+  private px = new Float32Array(0)
+  private py = new Float32Array(0)
+  private vx = new Float32Array(0)
+  private vy = new Float32Array(0)
+  private ax = new Float32Array(0)
+  private ay = new Float32Array(0)
+  private mass = new Float32Array(0)
+  private cores: Core[] = []
+  private physicsAcc = 0
+  private lastTime = 0
+  private tickParity = false
+  private hazeTimer: ReturnType<typeof setInterval> | null = null
 
   constructor(canvas: HTMLCanvasElement, cb: EngineCallbacks) {
     this.canvas = canvas
@@ -112,7 +131,7 @@ export class StarfieldEngine {
     // 触屏：禁掉浏览器默认手势（滚动/系统缩放），单指拖动才能平移星图
     canvas.style.touchAction = 'none'
 
-    // 双指捏合缩放（MM2）：pointer 级跟踪，两指走 pinch，松回一指恢复拖动/点选
+    // 双指捏合缩放：pointer 级跟踪，两指走 pinch，松回一指恢复拖动/点选
     const pointers = new Map<number, { x: number; y: number }>()
     let pinchDist = 0
 
@@ -120,7 +139,7 @@ export class StarfieldEngine {
       const rect = canvas.getBoundingClientRect()
       const wx = (mx - rect.width / 2) / this.cam.k + this.cam.x
       const wy = (my - rect.height / 2) / this.cam.k + this.cam.y
-      this.cam.k = Math.min(6, Math.max(0.3, this.cam.k * factor))
+      this.cam.k = Math.min(6, Math.max(0.25, this.cam.k * factor))
       this.cam.x = wx - (mx - rect.width / 2) / this.cam.k
       this.cam.y = wy - (my - rect.height / 2) / this.cam.k
       this.camTarget = null
@@ -192,33 +211,66 @@ export class StarfieldEngine {
         this.paused = true
       } else if (this.paused) {
         this.paused = false
+        this.lastTime = performance.now()
         this.loop()
       }
     })
 
+    this.lastTime = performance.now()
     this.loop()
   }
 
   destroy(): void {
     cancelAnimationFrame(this.raf)
     this.ro.disconnect()
-    this.sim.stop()
+    if (this.hazeTimer) clearInterval(this.hazeTimer)
   }
 
   setData(data: StarMapData): void {
-    // 星云中心：黄金角螺旋布置，半径随成员规模生长（避免大星云挤出屏幕）
+    // 星云核心：黄金角螺旋布置，质量 ∝ 成员数（相当于星系中心的超大质量体）
     const nebInfo = data.nebulae.map((n) => ({ id: n.id, count: n.star_count ?? 0 }))
-    const nebCenters = new Map<number, { x: number; y: number }>()
+    const cores: Core[] = []
+    const coreOf = new Map<number, Core>()
     nebInfo.forEach((n, i) => {
-      const radius = 150 + Math.sqrt(n.count) * 15
+      const radius = 160 + Math.sqrt(n.count) * 15
       const angle = i * 2.39996 + 0.6
-      nebCenters.set(n.id, { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius * 0.85 })
+      const core: Core = {
+        wx: Math.cos(angle) * radius,
+        wy: Math.sin(angle) * radius * 0.85,
+        mass: 60 + n.count * 26,
+        spin: i % 2 === 0 ? 1 : -1 // 每个星系自转方向不同
+      }
+      cores.push(core)
+      coreOf.set(n.id, core)
     })
+    const freeCount = data.stars.filter((s) => s.nebula_ids[0] === undefined).length
+    const freeCore: Core = { wx: 0, wy: 0, mass: freeCount * 10, spin: 1 }
+    if (freeCount > 0) cores.push(freeCore)
+    this.cores = cores
 
+    // 初始化恒星：位置在核心附近，带切向轨道速度（v = √(GM/r)，像行星绕日）
     const rand = mulberry32(20260827)
-    this.nodes = data.stars.map((s) => {
+    const n = data.stars.length
+    this.px = new Float32Array(n)
+    this.py = new Float32Array(n)
+    this.vx = new Float32Array(n)
+    this.vy = new Float32Array(n)
+    this.ax = new Float32Array(n)
+    this.ay = new Float32Array(n)
+    this.mass = new Float32Array(n)
+    this.nodes = data.stars.map((s, i) => {
       const len = Math.min(2.4, s.content.length / 90)
       const r = 1.7 + len + (s.favorite ? 1.3 : 0) + (s.is_gem ? 1.6 : 0)
+      const core = s.nebula_ids[0] !== undefined ? (coreOf.get(s.nebula_ids[0]) ?? freeCore) : freeCore
+      const dist = 60 + rand() * (60 + Math.sqrt(core.mass) * 3.2)
+      const ang = rand() * Math.PI * 2
+      const orbitalV = Math.sqrt((GRAVITY * core.mass) / Math.max(60, dist)) * (0.85 + rand() * 0.3)
+      this.px[i] = core.wx + Math.cos(ang) * dist
+      this.py[i] = core.wy + Math.sin(ang) * dist
+      // 切向速度 → 进入稳定轨道；每个星系按自转方向旋转
+      this.vx[i] = -Math.sin(ang) * orbitalV * core.spin + (rand() - 0.5) * 2
+      this.vy[i] = Math.cos(ang) * orbitalV * core.spin + (rand() - 0.5) * 2
+      this.mass[i] = 1 + Math.min(5, s.content.length / 380) + (s.favorite ? 2 : 0) + (s.is_gem ? 3 : 0)
       return {
         id: s.id,
         star: s,
@@ -226,95 +278,56 @@ export class StarfieldEngine {
         color: s.is_gem
           ? '#ffd166'
           : s.nebula_ids[0] !== undefined
-            ? (data.nebulae.find((n) => n.id === s.nebula_ids[0])?.color ?? s.book_color)
+            ? (data.nebulae.find((x) => x.id === s.nebula_ids[0])?.color ?? s.book_color)
             : s.book_color,
         phase: rand() * Math.PI * 2,
         bright: Math.min(1, 0.35 + s.revisit_count * 0.18 + (s.favorite ? 0.25 : 0)),
         spikes: r >= 3.4 || Boolean(s.is_gem),
-        x: (rand() - 0.5) * 1400,
-        y: (rand() - 0.5) * 1400,
-        vx: 0,
-        vy: 0
+        x: this.px[i],
+        y: this.py[i]
       }
     })
-    this.byId = new Map(this.nodes.map((n) => [n.id, n]))
+    this.byId = new Map(this.nodes.map((n, i) => [n.id, i]))
+
     this.edges = data.links
       .map((l) => ({ source: l.from_highlight, target: l.to_highlight, kind: l.kind }))
       .filter((e) => this.byId.has(e.source as number) && this.byId.has(e.target as number))
 
-    this.sim
-      .nodes(this.nodes)
-      .force(
-        'link',
-        forceLink<Node, Edge>(this.edges)
-          .id((d) => d.id)
-          .distance(110)
-          .strength(0.25)
-      )
-      .force('charge', forceManyBody<Node>().strength(9)) // 万有引力：星星互相吸引（Barnes-Hut 近似），自然聚成星团
-      .force('collide', forceCollide<Node>((d) => d.r * 7)) // 引力与碰撞平衡：成团而不坍缩
-      .force('x', forceX<Node>((d) => (d.star.nebula_ids[0] !== undefined ? (nebCenters.get(d.star.nebula_ids[0])?.x ?? 0) : 0)).strength((d) => (d.star.nebula_ids[0] !== undefined ? 0.08 : 0.015)))
-      .force('y', forceY<Node>((d) => (d.star.nebula_ids[0] !== undefined ? (nebCenters.get(d.star.nebula_ids[0])?.y ?? 0) : 0)).strength((d) => (d.star.nebula_ids[0] !== undefined ? 0.08 : 0.015)))
-      .alpha(1)
-      .restart()
-
-    // 星云辉光：按成员分布计算中心与半径（延迟到首个绘制帧后，布局接近稳定时更新）
-    const byNeb = new Map<number, Node[]>()
-    for (const n of this.nodes) {
-      const id = n.star.nebula_ids[0]
-      if (id === undefined) continue
-      if (!byNeb.has(id)) byNeb.set(id, [])
-      byNeb.get(id)!.push(n)
-    }
-    this.haze = []
-    byNeb.forEach((members) => {
-      if (members.length < 3) return
-      let cx = 0
-      let cy = 0
-      for (const m of members) {
-        cx += m.x ?? 0
-        cy += m.y ?? 0
-      }
-      cx /= members.length
-      cy /= members.length
-      let r = 0
-      for (const m of members) r = Math.max(r, Math.hypot((m.x ?? 0) - cx, (m.y ?? 0) - cy))
-      this.haze.push({
-        wx: cx,
-        wy: cy,
-        r: Math.max(70, r * 1.2),
-        color: HAZE_PALETTE[this.haze.length % HAZE_PALETTE.length]
-      })
-    })
-    // 布局会继续演化，8 秒后再校准一次辉光位置
-    setTimeout(() => this.refreshHaze(), 8000)
-
+    this.computeHaze()
+    if (this.hazeTimer) clearInterval(this.hazeTimer)
+    this.hazeTimer = setInterval(() => this.computeHaze(), 15000)
     this.buildBackground()
   }
 
-  private refreshHaze(): void {
-    if (this.paused) return
-    const byNeb = new Map<number, Node[]>()
-    for (const n of this.nodes) {
-      const id = n.star.nebula_ids[0]
-      if (id === undefined) continue
-      if (!byNeb.has(id)) byNeb.set(id, [])
-      byNeb.get(id)!.push(n)
-    }
-    let i = 0
-    for (const [, members] of byNeb) {
-      if (members.length < 3 || i >= this.haze.length) continue
-      let cx = 0
-      let cy = 0
-      for (const m of members) {
-        cx += m.x ?? 0
-        cy += m.y ?? 0
+  // 辉光跟随星系实际聚拢位置演化
+  private computeHaze(): void {
+    const byCore = new Map<string, { sx: number; sy: number; n: number }>()
+    for (let i = 0; i < this.nodes.length; i++) {
+      let best = ''
+      let bestD = Infinity
+      for (const c of this.cores) {
+        const d = Math.hypot(this.px[i] - c.wx, this.py[i] - c.wy)
+        if (d < bestD) {
+          bestD = d
+          best = `${c.wx},${c.wy}`
+        }
       }
-      cx /= members.length
-      cy /= members.length
-      let r = 0
-      for (const m of members) r = Math.max(r, Math.hypot((m.x ?? 0) - cx, (m.y ?? 0) - cy))
-      this.haze[i] = { ...this.haze[i], wx: cx, wy: cy, r: Math.max(70, r * 1.2) }
+      if (!byCore.has(best)) byCore.set(best, { sx: 0, sy: 0, n: 0 })
+      const e = byCore.get(best)!
+      e.sx += this.px[i]
+      e.sy += this.py[i]
+      e.n++
+    }
+    this.haze = []
+    let i = 0
+    for (const [, e] of byCore) {
+      if (e.n < 3) continue
+      this.haze.push({
+        wx: e.sx / e.n,
+        wy: e.sy / e.n,
+        r: Math.max(90, 26 * Math.sqrt(e.n)),
+        color: HAZE_PALETTE[i % HAZE_PALETTE.length]
+      })
       i++
     }
   }
@@ -333,12 +346,11 @@ export class StarfieldEngine {
   }
 
   focusStar(id: number): void {
-    const n = this.byId.get(id)
-    if (!n || n.x === undefined || n.y === undefined) return
-    this.camTarget = { x: n.x, y: n.y, k: Math.max(1.8, this.cam.k) }
+    const idx = this.byId.get(id)
+    if (idx === undefined) return
+    this.camTarget = { x: this.px[idx], y: this.py[idx], k: Math.max(1.6, this.cam.k) }
   }
 
-  // 把当前星空渲染成高清壁纸（深空质感，与画布一致）
   renderWallpaper(width = 2560, height = 1440): string {
     const c = document.createElement('canvas')
     c.width = width
@@ -351,32 +363,32 @@ export class StarfieldEngine {
       let maxX = -Infinity
       let minY = Infinity
       let maxY = -Infinity
-      for (const n of this.nodes) {
-        minX = Math.min(minX, n.x ?? 0)
-        maxX = Math.max(maxX, n.x ?? 0)
-        minY = Math.min(minY, n.y ?? 0)
-        maxY = Math.max(maxY, n.y ?? 0)
+      for (let i = 0; i < this.nodes.length; i++) {
+        minX = Math.min(minX, this.px[i])
+        maxX = Math.max(maxX, this.px[i])
+        minY = Math.min(minY, this.py[i])
+        maxY = Math.max(maxY, this.py[i])
       }
-      const pad = 220
+      const pad = 240
       const k = Math.min((width - pad * 2) / Math.max(1, maxX - minX), (height - pad * 2) / Math.max(1, maxY - minY))
       const ox = width / 2 - ((minX + maxX) / 2) * k
       const oy = height / 2 - ((minY + maxY) / 2) * k
-      const sx = (n: Node): number => (n.x ?? 0) * k + ox
-      const sy = (n: Node): number => (n.y ?? 0) * k + oy
 
       g.globalCompositeOperation = 'lighter'
       for (const h of this.haze) {
         const r = h.r * k * 1.3
-        const grad = g.createRadialGradient(h.wx * k + ox, h.wy * k + oy, 0, h.wx * k + ox, h.wy * k + oy, Math.max(40, r))
-        grad.addColorStop(0, colorWithAlpha(h.color, 0.16))
+        const hx = h.wx * k + ox
+        const hy = h.wy * k + oy
+        const grad = g.createRadialGradient(hx, hy, 0, hx, hy, Math.max(60, r))
+        grad.addColorStop(0, colorWithAlpha(h.color, 0.15))
         grad.addColorStop(1, 'rgba(0,0,0,0)')
         g.fillStyle = grad
-        g.fillRect(h.wx * k + ox - r, h.wy * k + oy - r, r * 2, r * 2)
+        g.fillRect(hx - r, hy - r, r * 2, r * 2)
       }
       for (const e of this.edges) {
-        const a = this.byId.get(e.source as number)
-        const b = this.byId.get(e.target as number)
-        if (!a || !b) continue
+        const ai = this.byId.get(e.source as number)
+        const bi = this.byId.get(e.target as number)
+        if (ai === undefined || bi === undefined) continue
         g.strokeStyle =
           e.kind === 'collision'
             ? 'rgba(255,120,120,0.4)'
@@ -385,15 +397,18 @@ export class StarfieldEngine {
               : 'rgba(150,175,255,0.22)'
         g.lineWidth = 1.2
         g.beginPath()
-        g.moveTo(sx(a), sy(a))
-        g.lineTo(sx(b), sy(b))
+        g.moveTo(this.px[ai] * k + ox, this.py[ai] * k + oy)
+        g.lineTo(this.px[bi] * k + ox, this.py[bi] * k + oy)
         g.stroke()
       }
-      for (const n of this.nodes) {
+      for (let i = 0; i < this.nodes.length; i++) {
+        const n = this.nodes[i]
         const size = n.r * 9 * Math.max(1, k * 0.55)
         g.globalAlpha = Math.min(1, 0.4 + n.bright * 0.7)
-        g.drawImage(this.spriteFor(n.color), sx(n) - size / 2, sy(n) - size / 2, size, size)
-        if (n.spikes) this.paintSpikes(g, sx(n), sy(n), size, n.color, 0.55)
+        const x = this.px[i] * k + ox
+        const y = this.py[i] * k + oy
+        g.drawImage(this.spriteFor(n.color), x - size / 2, y - size / 2, size, size)
+        if (n.spikes) this.paintSpikes(g, x, y, size * 0.85, n.color, 0.55)
       }
       g.globalCompositeOperation = 'source-over'
     }
@@ -426,7 +441,6 @@ export class StarfieldEngine {
   }
 
   private paintDeepSpace(g: CanvasRenderingContext2D, w: number, h: number, rand: () => number, scale: number): void {
-    // 深空渐变底
     const grad = g.createLinearGradient(0, 0, w * 0.4, h)
     grad.addColorStop(0, '#0c1226')
     grad.addColorStop(0.55, '#080c1b')
@@ -475,7 +489,7 @@ export class StarfieldEngine {
       g.fill()
     }
 
-    // 暗角（边缘压暗，聚焦中心）
+    // 暗角
     const vig = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.hypot(w, h) * 0.62)
     vig.addColorStop(0, 'rgba(0,0,0,0)')
     vig.addColorStop(1, 'rgba(2,4,12,0.55)')
@@ -483,23 +497,24 @@ export class StarfieldEngine {
     g.fillRect(0, 0, w, h)
   }
 
-  private screenOf(n: Node): { x: number; y: number } {
-    const rect = this.canvas.getBoundingClientRect()
-    return {
-      x: ((n.x ?? 0) - this.cam.x) * this.cam.k + rect.width / 2,
-      y: ((n.y ?? 0) - this.cam.y) * this.cam.k + rect.height / 2
-    }
+  private screenX(i: number): number {
+    return (this.px[i] - this.cam.x) * this.cam.k + this.canvas.width / this.dpr / 2
   }
 
-  private nodeAt(mx: number, my: number): Node | null {
-    let best: Node | null = null
+  private screenY(i: number): number {
+    return (this.py[i] - this.cam.y) * this.cam.k + this.canvas.height / this.dpr / 2
+  }
+
+  private nodeAt(mx: number, my: number): number {
+    let best = -1
     let bestD = Infinity
-    for (const n of this.nodes) {
-      const s = this.screenOf(n)
-      const d = (s.x - mx) ** 2 + (s.y - my) ** 2
-      const hit = (n.r * this.cam.k + 7) ** 2
+    for (let i = 0; i < this.nodes.length; i++) {
+      const dx = this.screenX(i) - mx
+      const dy = this.screenY(i) - my
+      const hit = (this.nodes[i].r * this.cam.k + 7) ** 2
+      const d = dx * dx + dy * dy
       if (d < hit && d < bestD) {
-        best = n
+        best = i
         bestD = d
       }
     }
@@ -507,43 +522,117 @@ export class StarfieldEngine {
   }
 
   private handleHover(mx: number, my: number): void {
-    const n = this.nodeAt(mx, my)
+    const idx = this.nodeAt(mx, my)
     const prev = this.hoverId
-    this.hoverId = n?.id ?? 0
-    this.canvas.style.cursor = n ? 'pointer' : 'grab'
-    if (prev !== this.hoverId || n) {
-      this.cb.onHover(n?.star ?? null, mx, my)
+    this.hoverId = idx >= 0 ? this.nodes[idx].id : 0
+    this.canvas.style.cursor = idx >= 0 ? 'pointer' : 'grab'
+    if (prev !== this.hoverId || idx >= 0) {
+      this.cb.onHover(idx >= 0 ? this.nodes[idx].star : null, mx, my)
     }
   }
 
   private handleClick(): void {
     const rect = this.canvas.getBoundingClientRect()
-    const mx = this.lastMouse.x - rect.left
-    const my = this.lastMouse.y - rect.top
-    const n = this.nodeAt(mx, my)
+    const idx = this.nodeAt(this.lastMouse.x - rect.left, this.lastMouse.y - rect.top)
     if (this.selectMode) {
-      if (n) {
-        if (this.multiSelected.has(n.id)) this.multiSelected.delete(n.id)
-        else this.multiSelected.add(n.id)
+      if (idx >= 0) {
+        const id = this.nodes[idx].id
+        if (this.multiSelected.has(id)) this.multiSelected.delete(id)
+        else this.multiSelected.add(id)
         this.cb.onMultiSelect([...this.multiSelected])
       }
       return
     }
-    this.selectedId = n?.id ?? 0
-    this.cb.onSelect(n?.star ?? null)
+    this.selectedId = idx >= 0 ? this.nodes[idx].id : 0
+    this.cb.onSelect(idx >= 0 ? this.nodes[idx].star : null)
+  }
+
+  // ---------- N 体物理：F = G·m₁m₂/(d²+ε²)^{3/2}，半隐式欧拉积分 ----------
+  private physicsStep(dt: number): void {
+    const n = this.nodes.length
+    if (n === 0) return
+    this.ax.fill(0)
+    this.ay.fill(0)
+    const g = GRAVITY
+    const e2 = SOFTENING * SOFTENING
+
+    // 星云核心的引力（星系中心的超大质量体）
+    const ce2 = CORE_SOFTENING * CORE_SOFTENING
+    for (const c of this.cores) {
+      for (let i = 0; i < n; i++) {
+        const dx = c.wx - this.px[i]
+        const dy = c.wy - this.py[i]
+        const d2 = dx * dx + dy * dy + ce2
+        const inv = (g * c.mass) / (d2 * Math.sqrt(d2))
+        this.ax[i] += dx * inv
+        this.ay[i] += dy * inv
+      }
+    }
+
+    // 星与星的互相摄动：质量虽小，但会真实地改变彼此的轨迹
+    this.tickParity = !this.tickParity
+    const skipPairs = n > 2600 && this.tickParity
+    for (let i = 0; i < n; i++) {
+      const pxi = this.px[i]
+      const pyi = this.py[i]
+      const mi = this.mass[i]
+      const jStart = skipPairs && i % 2 === 0 ? i + 2 : i + 1
+      for (let j = jStart; j < n; j++) {
+        const dx = this.px[j] - pxi
+        const dy = this.py[j] - pyi
+        const d2 = dx * dx + dy * dy + e2
+        const inv = g / (d2 * Math.sqrt(d2))
+        const fj = inv * this.mass[j]
+        const fi = inv * this.mass[i]
+        this.ax[i] += dx * fj
+        this.ay[i] += dy * fj
+        this.ax[j] -= dx * fi
+        this.ay[j] -= dy * fi
+      }
+    }
+
+    // 软边界：极微弱的向心潮汐，防止星永久逃逸
+    for (let i = 0; i < n; i++) {
+      const d = Math.hypot(this.px[i], this.py[i])
+      if (d > BOUNDARY) {
+        const pull = ((d - BOUNDARY) / BOUNDARY) * 2.2
+        this.ax[i] -= (this.px[i] / d) * pull
+        this.ay[i] -= (this.py[i] / d) * pull
+      }
+    }
+
+    // 半隐式欧拉
+    for (let i = 0; i < n; i++) {
+      this.vx[i] += this.ax[i] * dt
+      this.vy[i] += this.ay[i] * dt
+      this.px[i] += this.vx[i] * dt
+      this.py[i] += this.vy[i] * dt
+      this.nodes[i].x = this.px[i]
+      this.nodes[i].y = this.py[i]
+    }
   }
 
   private loop = (): void => {
     this.raf = requestAnimationFrame(this.loop)
-    // 力导向沉降后停止计算，只保留绘制（闪烁/交互），大幅降低 CPU
-    if (this.sim.alpha()! > 0.015) this.sim.tick(1)
+    const now = performance.now()
+    let dt = (now - this.lastTime) / 1000
+    this.lastTime = now
+    if (dt > 0.1) dt = 0.1
+    this.physicsAcc += dt
+    let steps = 0
+    while (this.physicsAcc >= PHYSICS_DT && steps < 2) {
+      this.physicsStep(PHYSICS_DT)
+      this.physicsAcc -= PHYSICS_DT
+      steps++
+    }
+    if (this.physicsAcc > PHYSICS_DT * 3) this.physicsAcc = 0
     if (this.camTarget) {
       this.cam.x += (this.camTarget.x - this.cam.x) * 0.08
       this.cam.y += (this.camTarget.y - this.cam.y) * 0.08
       this.cam.k += (this.camTarget.k - this.cam.k) * 0.08
       if (Math.abs(this.camTarget.x - this.cam.x) < 0.5) this.camTarget = null
     }
-    this.draw(Date.now() / 1000)
+    this.draw(now / 1000)
   }
 
   private draw(t: number): void {
@@ -554,7 +643,6 @@ export class StarfieldEngine {
     ctx.save()
     ctx.scale(dpr, dpr)
 
-    // 深空底（含银河/星尘，视差平铺）
     if (this.bg) {
       const px = -this.cam.x * 0.3 * this.cam.k
       const py = -this.cam.y * 0.3 * this.cam.k
@@ -566,76 +654,76 @@ export class StarfieldEngine {
 
     ctx.globalCompositeOperation = 'lighter'
 
-    // 星云辉光
+    // 星云辉光（跟随成员实际聚拢位置）
     for (const hz of this.haze) {
       const hx = (hz.wx - this.cam.x) * this.cam.k + w / 2
       const hy = (hz.wy - this.cam.y) * this.cam.k + h / 2
       const r = hz.r * this.cam.k
       if (hx < -r || hx > w + r || hy < -r || hy > h + r) continue
       const grad = ctx.createRadialGradient(hx, hy, 0, hx, hy, Math.max(40, r))
-      grad.addColorStop(0, colorWithAlpha(hz.color, 0.11))
-      grad.addColorStop(0.7, colorWithAlpha(hz.color, 0.045))
+      grad.addColorStop(0, colorWithAlpha(hz.color, 0.1))
+      grad.addColorStop(0.7, colorWithAlpha(hz.color, 0.04))
       grad.addColorStop(1, 'rgba(0,0,0,0)')
       ctx.fillStyle = grad
       ctx.fillRect(hx - r, hy - r, r * 2, r * 2)
     }
 
-    // 连线
+    // 共鸣星桥
     for (const e of this.edges) {
-      const a = this.byId.get(e.source as number)
-      const b = this.byId.get(e.target as number)
-      if (!a || !b || a.x === undefined || b.x === undefined) continue
-      const sa = this.screenOf(a)
-      const sb = this.screenOf(b)
+      const ai = this.byId.get(e.source as number)
+      const bi = this.byId.get(e.target as number)
+      if (ai === undefined || bi === undefined) continue
       ctx.strokeStyle =
         e.kind === 'collision'
-          ? 'rgba(255,110,110,0.42)'
+          ? 'rgba(255,110,110,0.4)'
           : e.kind === 'manual'
             ? 'rgba(255,205,130,0.42)'
             : 'rgba(150,175,255,0.22)'
       ctx.lineWidth = 1
       ctx.beginPath()
-      ctx.moveTo(sa.x, sa.y)
-      ctx.lineTo(sb.x, sb.y)
+      ctx.moveTo(this.screenX(ai), this.screenY(ai))
+      ctx.lineTo(this.screenX(bi), this.screenY(bi))
       ctx.stroke()
     }
 
     // 星
-    for (const n of this.nodes) {
-      const s = this.screenOf(n)
-      if (s.x < -80 || s.x > w + 80 || s.y < -80 || s.y > h + 80) continue
+    for (let i = 0; i < this.nodes.length; i++) {
+      const n = this.nodes[i]
+      const sx = this.screenX(i)
+      const sy = this.screenY(i)
+      if (sx < -80 || sx > w + 80 || sy < -80 || sy > h + 80) continue
       const sprite = this.spriteFor(n.color)
       const tw = 0.82 + 0.18 * Math.sin(t * 1.4 + n.phase)
       const size = (n.r * 7.5 + (this.highlightIds.has(n.id) ? 10 : 0)) * this.cam.k * tw
       ctx.globalAlpha = Math.min(1, 0.35 + n.bright * 0.75) * tw
-      ctx.drawImage(sprite, s.x - size / 2, s.y - size / 2, size, size)
+      ctx.drawImage(sprite, sx - size / 2, sy - size / 2, size, size)
       if (this.highlightIds.has(n.id)) {
         ctx.globalAlpha = 0.95
-        ctx.drawImage(sprite, s.x - size / 2 - 4, s.y - size / 2 - 4, size + 8, size + 8)
+        ctx.drawImage(sprite, sx - size / 2 - 4, sy - size / 2 - 4, size + 8, size + 8)
       }
       if (n.spikes && this.cam.k > 0.55) {
-        this.paintSpikes(ctx, s.x, s.y, size * 0.85, n.color, 0.4 * tw)
+        this.paintSpikes(ctx, sx, sy, size * 0.85, n.color, 0.4 * tw)
       }
       if (n.star.is_gem) {
         ctx.globalAlpha = 0.9
         ctx.strokeStyle = 'rgba(255,209,102,0.85)'
         ctx.lineWidth = 1
         ctx.beginPath()
-        ctx.arc(s.x, s.y, n.r * this.cam.k + 6, 0, Math.PI * 2)
+        ctx.arc(sx, sy, n.r * this.cam.k + 6, 0, Math.PI * 2)
         ctx.stroke()
       }
       if (this.multiSelected.has(n.id)) {
         ctx.globalAlpha = 1
         ctx.strokeStyle = 'rgba(255,213,128,0.95)'
         ctx.beginPath()
-        ctx.arc(s.x, s.y, n.r * this.cam.k + 5, 0, Math.PI * 2)
+        ctx.arc(sx, sy, n.r * this.cam.k + 5, 0, Math.PI * 2)
         ctx.stroke()
       }
       if (n.id === this.selectedId) {
         ctx.globalAlpha = 1
         ctx.strokeStyle = 'rgba(235,242,255,0.92)'
         ctx.beginPath()
-        ctx.arc(s.x, s.y, n.r * this.cam.k + 4, 0, Math.PI * 2)
+        ctx.arc(sx, sy, n.r * this.cam.k + 4, 0, Math.PI * 2)
         ctx.stroke()
       }
     }
