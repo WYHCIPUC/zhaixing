@@ -105,17 +105,17 @@ export default function SkyView() {
   return (
     <div className="relative flex h-full flex-col">
       {/* 工具条 */}
-      <header className="z-10 flex items-center gap-3 border-b border-[var(--line)] px-8 py-3">
+      <header className="relative z-20 flex shrink-0 items-center gap-3 whitespace-nowrap border-b border-[var(--line)] px-8 py-3">
         <h1 className="text-[16px] font-semibold">
           <span className="star-mark mr-1">✦</span>星穹
         </h1>
         <input
-          className="input ml-2 w-[240px] py-1.5"
+          className="input ml-2 w-[240px] min-w-[160px] py-1.5"
           placeholder="在星空里找一颗星…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {aiMsg && (
             <span className="max-w-[420px] truncate text-[11.5px] text-[var(--text-dim)]" title={aiMsg}>
               {aiMsg}
@@ -168,13 +168,13 @@ export default function SkyView() {
       )}
 
       {/* 星野 */}
-      <div ref={canvasHost} className="relative min-h-0 flex-1">
+      <div ref={canvasHost} className="relative min-h-0 flex-1 overflow-hidden m-3 rounded-2xl border border-white/10 shadow-[0_24px_80px_rgba(10,16,40,0.35),inset_0_0_120px_rgba(5,8,20,0.6)]">
         <canvas ref={canvasRef} className="absolute inset-0" />
 
         {data && data.stars.length === 0 && (
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-            <div className="text-[15px] text-[var(--text-dim)]">星空还是空的</div>
-            <div className="mt-2 text-[12px] opacity-60">先去书架导入笔记，再回来点亮</div>
+            <div className="text-[15px] text-[#8fa3c8]">星空还是空的</div>
+            <div className="mt-2 text-[12px] text-[#8fa3c8] opacity-70">先去书架导入笔记，再回来点亮</div>
           </div>
         )}
 
@@ -186,11 +186,11 @@ export default function SkyView() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="pointer-events-none absolute z-20 max-w-[320px] rounded-lg border border-[var(--line)]  px-3 py-2"
+              className="pointer-events-none absolute z-20 max-w-[320px] rounded-lg border border-white/15 bg-[#0e1428f0] px-3 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
               style={{ left: Math.min(hover.x + 14, (canvasHost.current?.clientWidth ?? 800) - 340), top: hover.y + 14 }}
             >
-              <div className="serif line-clamp-3 text-[12px] leading-6">{hover.star.content}</div>
-              <div className="mt-1 text-[10.5px] text-[var(--text-dim)]">
+              <div className="serif line-clamp-3 text-[12px] leading-6 text-[#dfe7f5]">{hover.star.content}</div>
+              <div className="mt-1 text-[10.5px] text-[#8fa3c8]">
                 《{hover.star.book_title}》{hover.star.chapter ? ` · ${hover.star.chapter}` : ''}
                 {hover.star.is_gem ? ' · ★镇星之宝' : ''}
               </div>

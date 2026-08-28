@@ -68,7 +68,7 @@ export default function StarDrawer({
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 420, opacity: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-      className="absolute right-0 top-0 z-30 flex h-full w-full flex-col overflow-hidden border-l border-[var(--line)]  md:w-[400px] md:max-w-[45vw]"
+      className="absolute right-0 top-0 z-[60] flex h-full w-full flex-col overflow-hidden border-l border-[var(--line)] bg-white shadow-[-24px_0_64px_rgba(20,30,60,0.18)]  md:w-[400px] md:max-w-[45vw]"
     >
       <header className="flex items-center justify-between border-b border-[var(--line)] px-5 py-3">
         <div className="text-[13px] text-[var(--text-dim)]">

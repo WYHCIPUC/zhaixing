@@ -66,6 +66,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+@layer components {
 .serif {
   font-weight: 500;
   color: #37352f;
@@ -154,6 +155,8 @@ body {
 }
 .input::placeholder {
   color: var(--text-faint);
+}
+
 }
 
 /* ---------- 滚动 / 选区 / 焦点 ---------- */

@@ -16,7 +16,7 @@ export async function draftNebulaArticle(db: DB, cfg: AiConfig, nebulaId: number
   if (!nebula) throw new Error('星云不存在')
   const rows = db
     .prepare(
-      `SELECT h.content, b.title AS book, t.thought
+      `SELECT h.content, b.title AS book, t.content AS thought
        FROM nebula_stars ns
        JOIN highlights h ON h.id = ns.highlight_id
        JOIN books b ON b.id = h.book_id

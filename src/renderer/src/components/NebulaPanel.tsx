@@ -31,7 +31,7 @@ export default function NebulaPanel({
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="absolute inset-x-0 bottom-0 z-30 max-h-[62%] overflow-hidden border-t border-[var(--line)] "
+      className="absolute inset-x-0 bottom-0 z-[50] max-h-[62%] overflow-hidden border-t border-[var(--line)] "
     >
       <header className="flex items-center gap-3 border-b border-[var(--line)] px-8 py-3">
         <div>

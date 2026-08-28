@@ -37,7 +37,7 @@ export default function LinkReview({
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 460, opacity: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-      className="absolute right-0 top-0 z-40 flex h-full w-[460px] max-w-[50vw] flex-col overflow-hidden border-l border-[var(--line)] "
+      className="absolute right-0 top-0 z-[70] flex h-full w-[460px] max-w-[50vw] shrink-0 flex-col overflow-hidden border-l border-[var(--line)] bg-white shadow-[-24px_0_64px_rgba(20,30,60,0.2)] "
     >
       <header className="flex items-center justify-between border-b border-[var(--line)] px-5 py-3">
         <div className="text-[14px] font-medium">
