@@ -18,9 +18,23 @@ export function getDb(): DB {
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
   db.exec(SCHEMA)
-  // 手机端以 user_version 判断库版本（db 互通护栏）；桌面建库后同样落版本号
+  // 迁移：老库（user_version 0/1）补齐 v2 新列后再落版本号
   const uv = (db.pragma('user_version', { simple: true }) as number) ?? 0
-  if (uv === 0) db.pragma(`user_version = ${SCHEMA_VERSION}`)
+  if (uv < 2) {
+    const alters = [
+      'ALTER TABLE books ADD COLUMN chapter_count INTEGER',
+      'ALTER TABLE books ADD COLUMN reading_progress REAL',
+      'ALTER TABLE books ADD COLUMN read_status TEXT'
+    ]
+    for (const sql of alters) {
+      try {
+        db.exec(sql)
+      } catch {
+        /* 列已存在（CREATE IF NOT EXISTS 建出的新库） */
+      }
+    }
+  }
+  if (uv !== SCHEMA_VERSION) db.pragma(`user_version = ${SCHEMA_VERSION}`)
   return db
 }
 

@@ -251,8 +251,8 @@ export class StarfieldEngine {
           .distance(110)
           .strength(0.25)
       )
-      .force('charge', forceManyBody<Node>().strength(-28))
-      .force('collide', forceCollide<Node>((d) => d.r * 5))
+      .force('charge', forceManyBody<Node>().strength(9)) // 万有引力：星星互相吸引（Barnes-Hut 近似），自然聚成星团
+      .force('collide', forceCollide<Node>((d) => d.r * 7)) // 引力与碰撞平衡：成团而不坍缩
       .force('x', forceX<Node>((d) => (d.star.nebula_ids[0] !== undefined ? (nebCenters.get(d.star.nebula_ids[0])?.x ?? 0) : 0)).strength((d) => (d.star.nebula_ids[0] !== undefined ? 0.08 : 0.015)))
       .force('y', forceY<Node>((d) => (d.star.nebula_ids[0] !== undefined ? (nebCenters.get(d.star.nebula_ids[0])?.y ?? 0) : 0)).strength((d) => (d.star.nebula_ids[0] !== undefined ? 0.08 : 0.015)))
       .alpha(1)

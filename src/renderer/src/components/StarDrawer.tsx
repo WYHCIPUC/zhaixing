@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
-import type { LinkRecord, NebulaRecord, SearchHit, StarMapStar } from '@shared/types'
+import type { LinkRecord, NebulaRecord, SearchHit, StarContext, StarMapStar } from '@shared/types'
 import { makeQuoteCard } from '../share/card'
 
 const KIND_META: Record<string, { label: string; icon: string }> = {
@@ -33,9 +33,15 @@ export default function StarDrawer({
   const [rewriteBusy, setRewriteBusy] = useState<string | null>(null)
   const [rewriteText, setRewriteText] = useState('')
   const [cardUrl, setCardUrl] = useState('')
+  const [ctx, setCtx] = useState<StarContext | null>(null)
   const [linkTarget, setLinkTarget] = useState('')
   const [linkNote, setLinkNote] = useState('')
   const [linkSearch, setLinkSearch] = useState<SearchHit[] | null>(null)
+
+  useEffect(() => {
+    setCtx(null)
+    window.api.starContext(star.id).then(setCtx).catch(() => {})
+  }, [star.id])
 
   const other = (l: LinkRecord): { id: number; content: string; book?: string } =>
     l.from_highlight === star.id
@@ -96,6 +102,38 @@ export default function StarDrawer({
           <span>重访 {star.revisit_count}</span>
           <span>{star.created_at.slice(0, 10)}</span>
         </div>
+
+        {/* 语境：回忆当时的阅读现场 */}
+        {ctx && (
+          <div className="mt-4 rounded-lg border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2.5">
+            <div className="mb-1.5 text-[11px] tracking-wide text-[var(--text-dim)]">当时的语境</div>
+            <div className="text-[12px] leading-6">
+              {star.chapter && <span className="text-[var(--text)]">{star.chapter}</span>}
+              {ctx.chapter_total ? (
+                <span className="text-[var(--text-dim)]"> · 第 {ctx.chapter_index + 1}/{ctx.chapter_total} 章</span>
+              ) : null}
+            </div>
+            {ctx.progress !== null && ctx.progress !== undefined && (
+              <div className="mt-1 text-[12px] text-[var(--text-dim)]">
+                当时读到 <span className="font-medium text-[var(--text)]">{Math.round(ctx.progress)}%</span>
+                {ctx.read_status === 'finished' ? ' · 已读完' : ctx.read_status === 'reading' ? ' · 在读' : ''}
+              </div>
+            )}
+            {ctx.siblings.length > 0 && (
+              <div className="mt-2.5">
+                <div className="text-[11px] text-[var(--text-dim)]">同章你还摘了 {ctx.siblings.length} 条</div>
+                {ctx.siblings.slice(0, 3).map((sib) => (
+                  <div key={sib.id} className="mt-1 line-clamp-1 text-[11.5px] text-[var(--text-secondary,5d5b54)] opacity-80">
+                    · {sib.content}
+                  </div>
+                ))}
+              </div>
+            )}
+            {ctx.peers.length > 0 && (
+              <div className="mt-1.5 text-[11px] text-[var(--text-dim)]">前后一周内你还拾了 {ctx.peers.length} 颗星</div>
+            )}
+          </div>
+        )}
 
         {/* 年轮想法 */}
         <h3 className="mt-5 text-[12px] tracking-wide text-[var(--text-dim)]">

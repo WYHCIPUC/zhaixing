@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { toast } from 'sonner'
 import type { BookRecord, HighlightRecord, ThoughtRecord } from '@shared/types'
 import { colorFor } from './BookshelfView'
+
+type NoteFilter = 'all' | 'fav' | 'thought'
 
 export default function BookDetailView({
   bookId,
@@ -17,8 +19,9 @@ export default function BookDetailView({
   const [stars, setStars] = useState<HighlightRecord[]>([])
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [mergeText, setMergeText] = useState<string | null>(null)
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [reviewDraft, setReviewDraft] = useState<string | null>(null)
+  const [filter, setFilter] = useState<NoteFilter>('all')
+  const [expanded, setExpanded] = useState<Set<string> | null>(null) // null = 尚未初始化
 
   const load = useCallback(async (): Promise<void> => {
     const [b, s] = await Promise.all([window.api.getBook(bookId), window.api.listStars(bookId)])
@@ -30,15 +33,42 @@ export default function BookDetailView({
     void load()
   }, [load])
 
+  const filtered = useMemo(
+    () =>
+      stars.filter((s) =>
+        filter === 'fav' ? s.favorite : filter === 'thought' ? (s.thoughts?.length ?? 0) > 0 : true
+      ),
+    [stars, filter]
+  )
+
   const chapters = useMemo(() => {
     const map = new Map<string, HighlightRecord[]>()
-    for (const s of stars) {
+    for (const s of filtered) {
       const key = s.chapter || '未分章'
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(s)
     }
     return [...map.entries()]
-  }, [stars])
+  }, [filtered])
+
+  const maxChapterCount = useMemo(() => Math.max(1, ...chapters.map(([, l]) => l.length)), [chapters])
+  const favCount = useMemo(() => stars.filter((s) => s.favorite).length, [stars])
+  const thoughtCount = useMemo(() => stars.filter((s) => (s.thoughts?.length ?? 0) > 0).length, [stars])
+
+  // 章节很少时直接展开；否则默认全部折叠，先看密度概览
+  const autoExpanded = useMemo(() => new Set(chapters.length <= 3 ? chapters.map(([c]) => c) : []), [chapters])
+  const effectiveExpanded = useMemo(
+    () => expanded ?? autoExpanded,
+    [expanded, autoExpanded]
+  )
+  const toggleChapter = (chapter: string): void => {
+    const base = expanded ?? autoExpanded
+    const next = new Set(base)
+    if (next.has(chapter)) next.delete(chapter)
+    else next.add(chapter)
+    setExpanded(next)
+  }
+  const allExpanded = chapters.length > 0 && chapters.every(([c]) => effectiveExpanded.has(c))
 
   const toggleSelect = (id: number): void => {
     const next = new Set(selected)
@@ -118,6 +148,13 @@ export default function BookDetailView({
   }
 
   const color = book.color && book.color !== '#7dd3fc' ? book.color : colorFor(book.title)
+  const thoughtTotal = stars.reduce((a, s) => a + (s.thoughts?.length ?? 0), 0)
+
+  const filterChips: { key: NoteFilter; label: string; count: number }[] = [
+    { key: 'all', label: '全部', count: stars.length },
+    { key: 'fav', label: '★ 星标', count: favCount },
+    { key: 'thought', label: '❝ 有想法', count: thoughtCount }
+  ]
 
   return (
     <div className="relative flex h-full flex-col">
@@ -148,9 +185,13 @@ export default function BookDetailView({
                 ))}
               </span>
               <span>✦ {stars.length} 颗星</span>
-              <span>
-                ❝ {stars.reduce((a, s) => a + (s.thoughts?.length ?? 0), 0)} 条想法
-              </span>
+              <span>❝ {thoughtTotal} 条想法</span>
+              {book.reading_progress !== null && book.reading_progress !== undefined && (
+                <span>
+                  读到 {Math.round(book.reading_progress)}%{book.read_status === 'finished' ? ' · 已读完' : ''}
+                </span>
+              )}
+              {book.chapter_count ? <span>共 {book.chapter_count} 章</span> : null}
             </div>
           </div>
           <div className="flex shrink-0 gap-2">
@@ -170,8 +211,17 @@ export default function BookDetailView({
           <button
             className="serif mt-3 block max-w-[640px] rounded-lg border border-[rgba(251,191,36,0.35)] bg-[rgba(251,191,36,0.06)] px-4 py-2 text-left text-[12.5px] italic leading-7"
             onClick={() => {
-              const el = document.getElementById(`star-${gem.id}`)
-              el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              setFilter('all')
+              setExpanded((prev) => {
+                const base = prev ?? autoExpanded
+                const next = new Set(base)
+                if (gem.chapter) next.add(gem.chapter)
+                return next
+              })
+              setTimeout(() => {
+                const el = document.getElementById(`star-${gem.id}`)
+                el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              }, 80)
             }}
           >
             <span className="star-mark mr-1.5 not-italic">★ 镇星之宝</span>
@@ -205,49 +255,102 @@ export default function BookDetailView({
         </div>
       </header>
 
-      {/* 星列表 */}
+      {/* 渐进披露：密度概览 → 展开章节 */}
       <div className="flex-1 overflow-y-auto px-10 py-6">
         {stars.length === 0 && (
           <div className="mt-20 text-center text-[var(--text-dim)]">这本书还没有星星</div>
         )}
-        {chapters.map(([chapter, list]) => (
-          <section key={chapter} className="mb-7">
-            <button
-              className="mb-2 flex w-full items-center gap-2 text-left"
-              onClick={() => {
-                const next = new Set(collapsed)
-                if (next.has(chapter)) next.delete(chapter)
-                else next.add(chapter)
-                setCollapsed(next)
-              }}
-            >
-              <span className="text-[11px] text-[var(--text-dim)]">{collapsed.has(chapter) ? '▸' : '▾'}</span>
-              <h2 className="text-[13px] font-medium tracking-wide text-[var(--accent)]">{chapter}</h2>
-              <span className="text-[11px] text-[var(--text-dim)]">{list.length}</span>
-              <div className="ml-2 h-px flex-1 bg-[var(--line)]" />
-            </button>
-            {!collapsed.has(chapter) && (
-              <div className="space-y-3">
-                {list.map((s, i) => (
-                  <StarCard
-                    key={s.id}
-                    star={s}
-                    color={color}
-                    index={i}
-                    selected={selected.has(s.id)}
-                    onToggleSelect={() => toggleSelect(s.id)}
-                    onToggleFavorite={() => void toggleFavorite(s)}
-                    onDelete={() => void deleteStar(s)}
-                    onChanged={() => {
-                      void load()
-                      onChanged()
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        ))}
+
+        {stars.length > 0 && (
+          <>
+            {/* 过滤 */}
+            <div className="mb-4 flex items-center gap-2">
+              {filterChips.map((c) => (
+                <button
+                  key={c.key}
+                  onClick={() => setFilter(c.key)}
+                  className={`rounded-full border px-3 py-1 text-[12px] transition-colors ${
+                    filter === c.key
+                      ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
+                      : 'border-[var(--line)] text-[var(--text-dim)] hover:text-[var(--text)]'
+                  }`}
+                >
+                  {c.label} <span className="opacity-70">{c.count}</span>
+                </button>
+              ))}
+              <span className="ml-auto text-[11.5px] text-[var(--text-dim)]">
+                {chapters.length} 个章节 · 点击章节行展开划线
+              </span>
+              <button
+                className="btn px-2 py-0.5 text-[11.5px]"
+                onClick={() => setExpanded(allExpanded ? new Set() : new Set(chapters.map(([c]) => c)))}
+              >
+                {allExpanded ? '全部收起' : '全部展开'}
+              </button>
+            </div>
+
+            {/* 章节密度概览 + 折叠列表 */}
+            {chapters.map(([chapter, list]) => {
+              const open = effectiveExpanded.has(chapter)
+              return (
+                <section key={chapter} className="mb-2">
+                  <button
+                    className="group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-[var(--surface-2)]"
+                    onClick={() => toggleChapter(chapter)}
+                  >
+                    <span className="w-3 text-[10px] text-[var(--text-dim)]">{open ? '▾' : '▸'}</span>
+                    <h2 className="min-w-0 max-w-[340px] truncate text-[13px] font-medium" title={chapter}>
+                      {chapter}
+                    </h2>
+                    <span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] text-[var(--accent)]">
+                      {list.length}
+                    </span>
+                    {/* 密度条 */}
+                    <div className="hidden h-[6px] min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--surface-2)] md:block">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(list.length / maxChapterCount) * 100}%` }}
+                        transition={{ duration: 0.5, ease: 'easeOut' }}
+                        className="h-full rounded-full"
+                        style={{ background: `linear-gradient(90deg, ${color}88, ${color})` }}
+                      />
+                    </div>
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {open && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: 'easeOut' }}
+                        className="overflow-hidden"
+                      >
+                        <div className="space-y-3 px-2 pb-4 pt-2">
+                          {list.map((s, i) => (
+                            <StarCard
+                              key={s.id}
+                              star={s}
+                              color={color}
+                              index={i}
+                              selected={selected.has(s.id)}
+                              onToggleSelect={() => toggleSelect(s.id)}
+                              onToggleFavorite={() => void toggleFavorite(s)}
+                              onDelete={() => void deleteStar(s)}
+                              onChanged={() => {
+                                void load()
+                                onChanged()
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </section>
+              )
+            })}
+          </>
+        )}
       </div>
 
       {/* 合并浮条 */}
@@ -504,7 +607,7 @@ function StarCard({
               </button>
             )}
             <span className="ml-auto flex items-center gap-3">
-              <span>{star.created_at.slice(0, 10)}</span>
+              <span>{(star.thoughts?.[0]?.thought_date || star.created_at).slice(0, 10)}</span>
               <button className="opacity-0 transition-opacity hover:text-[var(--accent)] group-hover:opacity-100" onClick={() => setEditing(true)}>
                 编辑
               </button>

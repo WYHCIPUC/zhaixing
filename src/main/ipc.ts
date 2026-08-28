@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { getDb, backupDatabase } from './db/connection'
 import {
+  getStarContext,
   addArchive,
   deleteBook,
   deleteStar,
@@ -108,6 +109,7 @@ export function registerIpc(): void {
   // ---------- 星 ----------
   ipcMain.handle('stars:list', (_e, bookId: number) => listStars(getDb(), bookId))
   ipcMain.handle('stars:get', (_e, id: number) => getStar(getDb(), id))
+  ipcMain.handle('stars:context', (_e, id: number) => getStarContext(getDb(), id))
   ipcMain.handle('stars:update', (_e, id: number, patch: StarPatch) => updateStar(getDb(), id, patch))
   ipcMain.handle('stars:delete', (_e, id: number) => deleteStar(getDb(), id))
   ipcMain.handle('stars:merge', (_e, ids: number[], content: string) => mergeStars(getDb(), ids, content))
@@ -279,13 +281,15 @@ export function registerIpc(): void {
       reviewCount: n.reviewCount ?? 0,
       noteCount: n.noteCount ?? 0,
       bookmarkCount: n.bookmarkCount ?? 0,
+      readingProgress: n.readingProgress,
+      markedStatus: n.markedStatus,
       sort: n.sort ?? 0
     }))
   })
-  ipcMain.handle('weread:syncBook', async (_e, bookId: string) => {
+  ipcMain.handle('weread:syncBook', async (_e, bookId: string, meta?: { progress?: number | null; status?: string | null }) => {
     const key = wereadKey()
     if (!key) throw new Error('未配置微信读书 API Key（设置 → 微信读书同步）')
-    return syncBook(getDb(), key, bookId)
+    return syncBook(getDb(), key, bookId, meta)
   })
 
   // ---------- 设置 / AI ----------

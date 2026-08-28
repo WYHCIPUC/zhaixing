@@ -162,6 +162,85 @@ export function getStar(db: DB, id: number): HighlightRecord | null {
   return attachDetails(db, [rowToHighlight(row)])[0]
 }
 
+export interface StarContextResult {
+  chapter_index: number
+  chapter_total: number | null
+  progress: number | null
+  read_status: string | null
+  siblings: { id: number; chapter: string; content: string; created_at: string }[]
+  peers: { id: number; content: string; created_at: string }[]
+}
+
+// 笔记的语境：章节位置 / 当时阅读状态 / 同章回顾 / 同期拾星
+export function getStarContext(db: DB, id: number): StarContextResult | null {
+  const star = db
+    .prepare(
+      `SELECT h.id, h.book_id, h.chapter, h.chapter_order, h.created_at, b.chapter_count, b.reading_progress, b.read_status
+       FROM highlights h JOIN books b ON b.id = h.book_id WHERE h.id = ?`
+    )
+    .get(id) as
+    | {
+        id: number
+        book_id: number
+        chapter: string
+        chapter_order: number
+        created_at: string
+        chapter_count: number | null
+        reading_progress: number | null
+        read_status: string | null
+      }
+    | undefined
+  if (!star) return null
+  const siblings = db
+    .prepare(
+      `SELECT id, chapter, content, created_at FROM highlights
+       WHERE book_id = ? AND chapter = ? AND chapter != '' AND id != ? ORDER BY chapter_order, id LIMIT 8`
+    )
+    .all(star.book_id, star.chapter, star.id) as StarContextResult['siblings']
+  const peers = db
+    .prepare(
+      `SELECT id, content, created_at FROM highlights
+       WHERE book_id = ? AND id != ? AND created_at != ?
+         AND datetime(created_at) BETWEEN datetime(?, '-7 days') AND datetime(?, '+7 days')
+       ORDER BY created_at LIMIT 6`
+    )
+    .all(star.book_id, star.id, star.created_at, star.created_at, star.created_at) as StarContextResult['peers']
+  return {
+    chapter_index: star.chapter_order,
+    chapter_total: star.chapter_count,
+    progress: star.reading_progress,
+    read_status: star.read_status,
+    siblings,
+    peers
+  }
+}
+
+// 同步写入书籍元数据（章节总数/阅读进度/状态）
+export function updateBookMeta(
+  db: DB,
+  id: number,
+  meta: { chapter_count?: number; reading_progress?: number; read_status?: string }
+): void {
+  const fields: string[] = []
+  const values: unknown[] = []
+  if (meta.chapter_count !== undefined) {
+    fields.push('chapter_count = ?')
+    values.push(meta.chapter_count)
+  }
+  if (meta.reading_progress !== undefined) {
+    fields.push('reading_progress = ?')
+    values.push(meta.reading_progress)
+  }
+  if (meta.read_status !== undefined) {
+    fields.push('read_status = ?')
+    values.push(meta.read_status)
+  }
+  if (fields.length === 0) return
+  fields.push(`updated_at = datetime('now','localtime')`)
+  values.push(id)
+  db.prepare(`UPDATE books SET ${fields.join(', ')} WHERE id = ?`).run(...values)
+}
+
 export function insertHighlight(
   db: DB,
   bookId: number,

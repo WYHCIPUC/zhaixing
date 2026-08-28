@@ -14,6 +14,7 @@ const api = {
 
   listStars: (bookId: number) => ipcRenderer.invoke('stars:list', bookId),
   getStar: (id: number) => ipcRenderer.invoke('stars:get', id),
+  starContext: (id: number) => ipcRenderer.invoke('stars:context', id),
   updateStar: (id: number, patch: StarPatch) => ipcRenderer.invoke('stars:update', id, patch),
   deleteStar: (id: number) => ipcRenderer.invoke('stars:delete', id),
   mergeStars: (ids: number[], content: string) => ipcRenderer.invoke('stars:merge', ids, content),
@@ -67,7 +68,8 @@ const api = {
   saveImage: (defaultName: string, dataUrl: string) => ipcRenderer.invoke('app:saveImage', defaultName, dataUrl),
 
   wereadNotebooks: () => ipcRenderer.invoke('weread:notebooks'),
-  wereadSyncBook: (bookId: string) => ipcRenderer.invoke('weread:syncBook', bookId),
+  wereadSyncBook: (bookId: string, meta?: { progress?: number | null; status?: string | null }) =>
+    ipcRenderer.invoke('weread:syncBook', bookId, meta),
 
   exportMarkdown: (bookId: number | 'all') => ipcRenderer.invoke('export:markdown', bookId),
 

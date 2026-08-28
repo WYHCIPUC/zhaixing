@@ -80,7 +80,10 @@ export async function runHeadlessSync(): Promise<void> {
         if (!item) break
         const name = item.book?.title ?? item.bookId
         try {
-          const r = await syncBook(db, key, item.bookId)
+          const r = await syncBook(db, key, item.bookId, {
+            progress: item.readingProgress ?? null,
+            status: item.markedStatus === 1 ? 'finished' : 'reading'
+          })
           done++
           added += r.highlightsAdded
           skipped += r.highlightsSkipped

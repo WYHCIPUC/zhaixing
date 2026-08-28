@@ -1,6 +1,6 @@
 // 双端共享的 SQLite schema（桌面 connection.ts / 手机 applySchema 共用）
 // SCHEMA_VERSION 对应 PRAGMA user_version；结构变更必须递增并同步两端的迁移逻辑
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 export const SCHEMA = `
 CREATE TABLE IF NOT EXISTS books (
@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS books (
   status TEXT NOT NULL DEFAULT 'finished' CHECK (status IN ('reading','finished','wishlist')),
   short_review TEXT NOT NULL DEFAULT '',
   gem_highlight_id INTEGER,
+  chapter_count INTEGER,
+  reading_progress REAL,
+  read_status TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );

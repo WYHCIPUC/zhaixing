@@ -8,7 +8,8 @@ import {
   insertHighlight,
   insertThought,
   insertThoughtIfNew,
-  updateBook
+  updateBook,
+  updateBookMeta
 } from '../db/repo'
 import {
   fetchBookmarklist,
@@ -49,7 +50,12 @@ export interface WereadSyncReport {
   ratingSet: boolean
 }
 
-export async function syncBook(db: DB, apiKey: string, bookId: string): Promise<WereadSyncReport> {
+export async function syncBook(
+  db: DB,
+  apiKey: string,
+  bookId: string,
+  meta?: { progress?: number | null; status?: string | null }
+): Promise<WereadSyncReport> {
   const [bm, reviews] = await Promise.all([fetchBookmarklist(apiKey, bookId), fetchMyReviews(apiKey, bookId)])
   const title = bm.book?.title?.trim() || `微信读书 ${bookId}`
   const author = bm.book?.author?.trim() || ''
@@ -64,6 +70,12 @@ export async function syncBook(db: DB, apiKey: string, bookId: string): Promise<
 
   let book = findBook(db, title, author)
   if (!book) book = insertBook(db, title, author)
+  const chapterTotal = (bm.chapters ?? []).reduce((m, c) => Math.max(m, c.chapterIdx + 1), 0)
+  updateBookMeta(db, book.id, {
+    ...(chapterTotal > 0 ? { chapter_count: chapterTotal } : {}),
+    ...(meta?.progress !== undefined && meta.progress !== null ? { reading_progress: meta.progress } : {}),
+    ...(meta?.status ? { read_status: meta.status } : {})
+  })
 
   const chapterMap = new Map((bm.chapters ?? []).map((c) => [c.chapterUid, c]))
 

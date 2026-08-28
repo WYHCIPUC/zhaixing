@@ -12,6 +12,9 @@ export interface BookRecord {
   status: 'reading' | 'finished' | 'wishlist'
   short_review: string
   gem_highlight_id: number | null // 镇星之宝
+  chapter_count?: number | null
+  reading_progress?: number | null
+  read_status?: string | null
   created_at: string
   updated_at: string
   highlight_count?: number
@@ -236,7 +239,18 @@ export interface WereadNotebook {
   reviewCount: number
   noteCount: number
   bookmarkCount: number
+  readingProgress?: number
+  markedStatus?: number
   sort: number
+}
+
+export interface StarContext {
+  chapter_index: number
+  chapter_total: number | null
+  progress: number | null
+  read_status: string | null
+  siblings: { id: number; chapter: string; content: string; created_at: string }[]
+  peers: { id: number; content: string; created_at: string }[]
 }
 
 export interface WereadSyncReport {
@@ -281,6 +295,7 @@ export interface ZhaixingApi {
   // 星（划线）
   listStars(bookId: number): Promise<HighlightRecord[]>
   getStar(id: number): Promise<HighlightRecord | null>
+  starContext(id: number): Promise<StarContext>
   updateStar(id: number, patch: StarPatch): Promise<void>
   deleteStar(id: number): Promise<void>
   mergeStars(ids: number[], content: string): Promise<number>
@@ -332,7 +347,7 @@ export interface ZhaixingApi {
 
   // 微信读书同步
   wereadNotebooks(): Promise<WereadNotebook[]>
-  wereadSyncBook(bookId: string): Promise<WereadSyncReport>
+  wereadSyncBook(bookId: string, meta?: { progress?: number | null; status?: string | null }): Promise<WereadSyncReport>
 
   // 导出
   exportMarkdown(bookId: number | 'all'): Promise<string>

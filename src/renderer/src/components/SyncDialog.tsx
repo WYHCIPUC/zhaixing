@@ -32,7 +32,11 @@ export default function SyncDialog({
   const syncOne = async (bookId: string): Promise<void> => {
     setRows((p) => ({ ...p, [bookId]: { status: 'busy' } }))
     try {
-      const r: WereadSyncReport = await window.api.wereadSyncBook(bookId)
+      const nb = books.find((x) => x.bookId === bookId)
+      const r: WereadSyncReport = await window.api.wereadSyncBook(bookId, {
+        progress: nb?.readingProgress ?? null,
+        status: nb?.markedStatus === 1 ? 'finished' : 'reading'
+      })
       setRows((p) => ({
         ...p,
         [bookId]: {
