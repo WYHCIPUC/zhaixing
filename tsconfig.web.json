@@ -23,6 +23,7 @@
     "src/shared/db/test-executor.ts",
     "src/shared/db/apply-schema.test.ts",
     "src/shared/db/async-repo.test.ts",
+    "src/shared/db/ai-repo.test.ts",
     "src/shared/weread/api.live.test.ts",
     "src/renderer/src/api/mobile-api.test.ts"
   ]

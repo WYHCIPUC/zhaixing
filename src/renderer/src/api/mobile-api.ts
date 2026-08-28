@@ -2,7 +2,7 @@
 // MM1 范围：导入/书/星/想法/标签/检索/设置/统计/存档/微信读书同步/导出文本/AI 测试连接
 // MM2-MM4 范围的方法（星穹图谱/流星/织星/AI 管线/星光节）暂由 Proxy 兜底空值，
 // 对应视图在移动端落地时改为真实实现（对照桌面 nebula.ts / meteor.ts / articles.ts）
-import type { AiTestResult, BookPatch, ImportReport, ParseResult, StarPatch, ZhaixingApi } from '@shared/types'
+import type { AiTestResult, BookPatch, ImportReport, ParseResult, RewriteStyle, StarPatch, ZhaixingApi } from '@shared/types'
 import { parseWereadText } from '@shared/parser/weread'
 import { bookToMarkdown, type ExportedFile } from '@shared/exporters/markdown'
 import { applySchema } from '@shared/db/apply-schema'
@@ -52,6 +52,22 @@ import {
 import { fetchBookmarklist, fetchMyReviews, fetchNotebooks, type WereadNotebookItem } from '@shared/weread/api'
 import { isAiConfigured, testAi as aiTest, type AiConfig } from '@shared/ai/client'
 import { Filesystem } from '@capacitor/filesystem'
+import { aiDeps } from '@shared/db/ai-repo'
+import {
+  askSky,
+  dailyCounts,
+  deleteArticle,
+  draftNebulaArticle,
+  fallbackCites,
+  listArticles,
+  pickGems,
+  rewriteQuoteOfStar,
+  runAnalysis,
+  socraticAsk,
+  spiritSpectrum,
+  saveArticleVersion,
+  updateArticleTitle
+} from '@shared/db/ai-repo'
 
 // 对照桌面 buildExports（buildExports 依赖同步 DB，手机端此处按同格式异步编排）
 async function exportBookMarkdown(db: Db, bookId: number | 'all'): Promise<ExportedFile[]> {
@@ -139,6 +155,52 @@ export async function createMobileApi(db: Db): Promise<ZhaixingApi> {
     createCapsule: (starId: number, deliverAt: string, message: string) => createCapsule(db, starId, deliverAt, message),
     listCapsules: () => listCapsules(db),
     nightFlightStars: (limit: number) => nightFlightStars(db, limit),
+
+    // AI 管线（MM4）：cfg 从设置读取；key 未配时由 aiCfg 抛出友好错误
+    runAiAnalysis: async () => {
+      const cfg = await aiCfg()
+      if (!cfg) throw new Error('未配置完整（需要 base_url / api_key / 模型名）')
+      return runAnalysis(db, cfg)
+    },
+    pickGems: async () => {
+      const cfg = await aiCfg()
+      if (!cfg) throw new Error('未配置完整（需要 base_url / api_key / 模型名）')
+      return pickGems(db, cfg)
+    },
+    listArticles: (nebulaId?: number) => listArticles(db, nebulaId),
+    draftNebulaArticle: async (nebulaId: number) => {
+      const cfg = await aiCfg()
+      if (!cfg) throw new Error('未配置 AI')
+      return draftNebulaArticle(db, cfg, aiDeps, nebulaId)
+    },
+    saveArticle: (id: number, contentMd: string) => saveArticleVersion(db, id, contentMd),
+    updateArticleTitle: (id: number, title: string) => updateArticleTitle(db, id, title),
+    deleteArticle: (id: number) => deleteArticle(db, id),
+    rewriteQuote: async (starId: number, style: RewriteStyle) => {
+      const cfg = await aiCfg()
+      if (!cfg) throw new Error('未配置 AI')
+      return rewriteQuoteOfStar(db, cfg, aiDeps, starId, style)
+    },
+    socraticAsk: async (starId: number, thought: string) => {
+      const cfg = await aiCfg()
+      if (!cfg) throw new Error('未配置 AI')
+      const star = await getStar(db, starId)
+      if (!star) throw new Error('星不存在')
+      return socraticAsk(cfg, aiDeps, star.content, thought)
+    },
+    askSky: async (question: string) => {
+      const cfg = await aiCfg()
+      if (!cfg) throw new Error('未配置 AI')
+      const r = await askSky(db, cfg, aiDeps, question)
+      if (r.cites.length === 0) r.cites.push(...(await fallbackCites(db, question)))
+      return r
+    },
+    dailyCounts: () => dailyCounts(db),
+    spiritSpectrum: async (refresh: boolean) => {
+      const cfg = await aiCfg()
+      if (!cfg) throw new Error('未配置 AI')
+      return spiritSpectrum(db, cfg, aiDeps, refresh)
+    },
 
     exportMarkdown: async (bookId: number | 'all'): Promise<string> => {
       const files = await exportBookMarkdown(db, bookId)

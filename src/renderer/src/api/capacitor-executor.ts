@@ -40,7 +40,14 @@ async function build(dbName: string): Promise<AsyncSqliteExecutor> {
       check((await conn.execute(sql, !opts?.noTx)) as CapResult)
     },
     run: async (sql, params = []) => {
-      const res = (await conn.run(sql, params as unknown[])) as CapResult
+      // 插件桥不支持二进制绑定（实测报 "No value for type"）：
+      // Uint8Array 参数自动转 base64 TEXT 落库，读取侧 shared ai/client blobToVectors 已兼容
+      const serialised = params.map((p) =>
+        p instanceof Uint8Array
+          ? btoa(String.fromCharCode(...p))
+          : p
+      )
+      const res = (await conn.run(sql, serialised as unknown[])) as CapResult
       check(res)
       return { changes: res.changes?.changes ?? 0 }
     },

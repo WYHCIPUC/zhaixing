@@ -121,8 +121,14 @@ export function vectorsToBlob(v: number[]): Uint8Array {
   return buf
 }
 
-export function blobToVectors(buf: Uint8Array | ArrayBuffer): number[] {
-  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf)
+export function blobToVectors(buf: Uint8Array | ArrayBuffer | string): number[] {
+  // string = base64：移动端插件桥不支持二进制绑定，embedding 以 base64 TEXT 落库
+  const bytes =
+    typeof buf === 'string'
+      ? Uint8Array.from(atob(buf), (c) => c.charCodeAt(0))
+      : buf instanceof Uint8Array
+        ? buf
+        : new Uint8Array(buf)
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   const v: number[] = []
   for (let i = 0; i < Math.floor(bytes.byteLength / 4); i++) v.push(view.getFloat32(i * 4, true))
