@@ -111,7 +111,7 @@ export default function StatsView() {
                     initial={{ width: 0 }}
                     animate={{ width: `${(t.count / maxTheme) * 100}%` }}
                     transition={{ duration: 0.6 }}
-                    className="h-full rounded-full bg-[rgba(224,102,44,0.75)]"
+                    className="h-full rounded-full bg-[#dd5b00]"
                   />
                 </div>
                 <span className="w-6 text-[var(--text-dim)]">{t.count}</span>
@@ -176,9 +176,9 @@ function HeatMap({ daily }: { daily: DailyCount[] }): React.ReactElement {
   const max = Math.max(1, ...daily.map((d) => d.count))
 
   const color = (n: number): string => {
-    if (n === 0) return 'rgba(60,50,40,0.07)'
+    if (n === 0) return '#f0eeec'
     const t = Math.min(1, n / max)
-    return `rgba(224,102,44,${0.15 + t * 0.85})`
+    return `rgba(221,91,0,${0.15 + t * 0.85})`
   }
 
   return (
@@ -219,13 +219,13 @@ function Radar({ spectrum }: { spectrum: SpiritSpectrum['spectrum'] }): React.Re
           key={f}
           points={spectrum.map((_, i) => pt(i, R * f).join(',')).join(' ')}
           fill="none"
-          stroke="rgba(60,50,40,0.1)"
+          stroke="#e5e3df"
         />
       ))}
       <polygon
         points={poly}
-        fill="rgba(224,102,44,0.14)"
-        stroke="rgba(224,102,44,0.85)"
+        fill="rgba(221,91,0,0.12)"
+        stroke="#dd5b00"
         strokeWidth={1.5}
         style={{
           transformOrigin: '100px 100px',
@@ -235,7 +235,7 @@ function Radar({ spectrum }: { spectrum: SpiritSpectrum['spectrum'] }): React.Re
       {spectrum.map((s, i) => {
         const [x, y] = pt(i, R + 18)
         return (
-          <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill="rgba(146,116,67,1)">
+          <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontSize={10} fill="#787671">
             {s.name}
           </text>
         )

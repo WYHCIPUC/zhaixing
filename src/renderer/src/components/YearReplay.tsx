@@ -36,7 +36,7 @@ export default function YearReplay({ onClose }: { onClose: () => void }) {
       const render = (t: number): void => {
         g.save()
         g.scale(dpr, dpr)
-        g.fillStyle = '#faf8f5'
+        g.fillStyle = '#ffffff'
         g.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight)
         const w = canvas.clientWidth
         const h = canvas.clientHeight
@@ -48,15 +48,15 @@ export default function YearReplay({ onClose }: { onClose: () => void }) {
           const y = it.y * (h - 80) + 40
           const size = it.r * 6 * age * tw
           const grad = g.createRadialGradient(x, y, 0, x, y, size)
-          grad.addColorStop(0, 'rgba(224,102,44,0.9)')
-          grad.addColorStop(0.3, 'rgba(224,102,44,0.5)')
+          grad.addColorStop(0, 'rgba(221,91,0,0.9)')
+          grad.addColorStop(0.3, 'rgba(221,91,0,0.4)')
           grad.addColorStop(1, 'rgba(0,0,0,0)')
           g.fillStyle = grad
           g.beginPath()
           g.arc(x, y, size, 0, Math.PI * 2)
           g.fill()
         }
-        g.fillStyle = 'rgba(90,80,70,0.9)'
+        g.fillStyle = 'rgba(120,118,113,0.9)'
         g.font = '28px sans-serif'
         g.fillText(`${String(Math.min(12, Math.floor(t) + 1)).padStart(2, '0')} 月`, 40, h - 36)
         g.restore()

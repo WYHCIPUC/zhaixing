@@ -28,7 +28,7 @@ export default function Sidebar({
   }, [view])
 
   return (
-    <aside className="flex w-[210px] shrink-0 flex-col border-r border-[var(--line)] bg-[#f6f3ee] px-3 py-5">
+    <aside className="flex w-[210px] shrink-0 flex-col border-r border-[var(--line)] bg-[#f6f5f4] px-3 py-5">
       <div className="mb-8 px-2">
         <motion.div
           className="text-[19px] font-semibold tracking-wide"
@@ -52,7 +52,7 @@ export default function Sidebar({
               <button
                 onClick={() => onNavigate(n.key)}
                 className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[13.5px] font-medium transition-colors ${
-                  active ? 'text-[var(--accent)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'
+                  active ? 'text-[var(--text)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'
                 }`}
               >
                 {active && (

@@ -1,4 +1,7 @@
 import { app, BrowserWindow, shell } from 'electron'
+
+// 钉死数据目录名：dev 与打包版共用 %APPDATA%/zhaixing，防止 productName 变化导致数据漂移
+app.setName('zhaixing')
 import path from 'node:path'
 import { backupDatabase, closeDb } from './db/connection'
 import { registerIpc } from './ipc'
@@ -11,7 +14,7 @@ function createWindow(): void {
     minWidth: 1080,
     minHeight: 700,
     title: '摘星实录',
-    backgroundColor: '#faf5ec',
+    backgroundColor: '#ffffff',
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.mjs'),

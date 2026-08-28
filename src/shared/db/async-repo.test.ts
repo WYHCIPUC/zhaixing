@@ -324,3 +324,64 @@ describe('星穹图谱（对照桌面 getStarMap/createNebula/listLinks/bumpRevi
     expect(map.stars.every((s) => s.nebula_ids.length === 0)).toBe(true)
   })
 })
+
+// ---------- 流星与时间胶囊（对照桌面 meteor.ts） ----------
+
+describe('流星与时间胶囊（对照桌面 getMeteor/createCapsule/nightFlightStars）', () => {
+  it('无数据时返回空流星', async () => {
+    const { getMeteor } = await import('./async-repo')
+    const m = await getMeteor(db)
+    expect(m.logId).toBe(0)
+    expect(m.star).toBeNull()
+  })
+
+  it('随机流星：每天只生成一次，markMeteorRevisited 只计一次', async () => {
+    await importParsed(db, parseWereadText(SAMPLE).books)
+    const { getMeteor, markMeteorRevisited, listStars } = await import('./async-repo')
+    const m1 = await getMeteor(db)
+    expect(m1.star).toBeTruthy()
+    expect(m1.source).toBe('random')
+    const m2 = await getMeteor(db) // 同一天再查 → 同一条
+    expect(m2.logId).toBe(m1.logId)
+    expect(m2.star?.id).toBe(m1.star?.id)
+
+    await markMeteorRevisited(db, m1.logId)
+    await markMeteorRevisited(db, m1.logId) // 重复标记不重复计数
+    const stars = await listStars(db, (await listBooks(db))[0].id)
+    const hit = stars.find((s) => s.id === m1.star!.id)!
+    expect(hit.revisit_count).toBe(1)
+  })
+
+  it('到期胶囊优先成为流星并标记已投递', async () => {
+    await importParsed(db, parseWereadText(SAMPLE).books)
+    const stars = await listStars(db, (await listBooks(db))[0].id)
+    const { createCapsule, getMeteor, listCapsules } = await import('./async-repo')
+    await createCapsule(db, stars[2].id, '2026-01-01', '来自过去的星')
+    const m = await getMeteor(db)
+    expect(m.source).toBe('capsule')
+    expect(m.capsuleMessage).toBe('来自过去的星')
+    expect(m.star?.id).toBe(stars[2].id)
+    const capsules = await listCapsules(db)
+    expect(capsules[0].delivered).toBe(1)
+  })
+
+  it('未到期胶囊不投递、正常列出', async () => {
+    await importParsed(db, parseWereadText(SAMPLE).books)
+    const stars = await listStars(db, (await listBooks(db))[0].id)
+    const { createCapsule, getMeteor, listCapsules } = await import('./async-repo')
+    await createCapsule(db, stars[0].id, '2099-12-31', '未来')
+    const m = await getMeteor(db)
+    expect(m.source).toBe('random')
+    const capsules = await listCapsules(db)
+    expect(capsules.length).toBe(1)
+    expect(capsules[0].book_title).toBe('测试书')
+  })
+
+  it('nightFlightStars 偏向低重访星且带书名', async () => {
+    await importParsed(db, parseWereadText(SAMPLE).books)
+    const { nightFlightStars } = await import('./async-repo')
+    const nf = await nightFlightStars(db, 2)
+    expect(nf.length).toBe(2)
+    expect(nf[0].book_title).toBe('测试书')
+  })
+})

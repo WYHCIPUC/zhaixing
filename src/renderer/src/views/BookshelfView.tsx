@@ -8,7 +8,7 @@ import SyncDialog from '../components/SyncDialog'
 
 const BOOK_COLORS = [
   '#ff9a5a', '#d9930d', '#8b5cf6', '#38bdf8',
-  '#f59e0b', '#ff6f91', '#7c6cf6', '#ffb347'
+  '#a483b8', '#c9a227', '#7a9e9f', '#c08552'
 ]
 
 function colorFor(title: string): string {

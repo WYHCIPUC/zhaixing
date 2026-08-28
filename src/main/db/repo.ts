@@ -322,14 +322,16 @@ export function search(db: DB, q: string): SearchHit[] {
     }
   }
   if (ids.length === 0) {
-    // 短词（单字）或 FTS 无命中时回退 LIKE
+    // 短词（单字）或 FTS 无命中时回退 LIKE（转义通配符，避免用户输入改变匹配语义）
+    const escaped = trimmed.replace(/[\\%_]/g, (c) => '\\' + c)
+    const like = `%${escaped}%`
     const rows = db
       .prepare(
-        `SELECT h.id FROM highlights h WHERE h.content LIKE ? OR EXISTS (
-           SELECT 1 FROM thoughts t WHERE t.highlight_id = h.id AND t.content LIKE ?
+        `SELECT h.id FROM highlights h WHERE h.content LIKE ? ESCAPE '\\' OR EXISTS (
+           SELECT 1 FROM thoughts t WHERE t.highlight_id = h.id AND t.content LIKE ? ESCAPE '\\'
          ) ORDER BY h.id DESC LIMIT 200`
       )
-      .all(`%${trimmed}%`, `%${trimmed}%`) as { id: number }[]
+      .all(like, like) as { id: number }[]
     ids = rows.map((r) => r.id)
   }
   if (ids.length === 0) return []
@@ -437,6 +439,3 @@ export function importParsed(
   return { booksAdded, highlightsAdded, highlightsSkipped, thoughtsAdded, bookIds }
 }
 
-export function defaultDb() {
-  return getDb()
-}

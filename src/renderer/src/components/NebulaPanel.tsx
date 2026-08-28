@@ -94,7 +94,7 @@ export default function NebulaPanel({
           {stars.map((s) => (
             <button
               key={s.id}
-              className="panel block p-3 text-left transition-colors hover:border-[rgba(224,102,44,0.4)]"
+              className="panel block p-3 text-left transition-colors hover:border-[rgba(221,91,0,0.4)]"
               onClick={() => onOpenStar(s.id)}
             >
               <div className="serif line-clamp-3 text-[12.5px] leading-6">{s.content}</div>

@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { ZhaixingApi } from '@shared/types'
 import type { BookPatch, StarPatch } from '@shared/types'
 
 const api = {
@@ -79,5 +80,9 @@ const api = {
 }
 
 export type Api = typeof api
+
+// 编译期契约校验：preload 实现必须与共享 API 接口完全一致
+const _contractCheck: ZhaixingApi = api
+void _contractCheck
 
 contextBridge.exposeInMainWorld('api', api)

@@ -11,9 +11,9 @@ export function makeQuoteCard(star: HighlightRecord & { book_title?: string }): 
 
   // 背景：夜空渐变 + 星尘
   const bg = g.createLinearGradient(0, 0, W, H)
-  bg.addColorStop(0, '#fffdf9')
-  bg.addColorStop(0.55, '#faf3e8')
-  bg.addColorStop(1, '#f2e7d4')
+  bg.addColorStop(0, '#ffffff')
+  bg.addColorStop(0.55, '#fbfaf8')
+  bg.addColorStop(1, '#f6f5f4')
   g.fillStyle = bg
   g.fillRect(0, 0, W, H)
   let seed = star.id * 2654435761
@@ -32,7 +32,7 @@ export function makeQuoteCard(star: HighlightRecord & { book_title?: string }): 
   }
   // 主星
   const glow = g.createRadialGradient(W / 2, H * 0.24, 0, W / 2, H * 0.24, 200)
-  glow.addColorStop(0, 'rgba(224,102,44,0.4)')
+  glow.addColorStop(0, 'rgba(221,91,0,0.28)')
   glow.addColorStop(0.25, 'rgba(251,191,36,0.12)')
   glow.addColorStop(1, 'rgba(0,0,0,0)')
   g.fillStyle = glow
@@ -46,7 +46,7 @@ export function makeQuoteCard(star: HighlightRecord & { book_title?: string }): 
   const quote = star.content
   const fontSize = quote.length > 120 ? 40 : quote.length > 60 ? 48 : 56
   g.font = `${fontSize}px Georgia, 'Source Han Serif SC', 'Noto Serif SC', serif`
-  g.fillStyle = '#322b3d'
+  g.fillStyle = '#37352f'
   const maxWidth = W - 200
   const lines: string[] = []
   let line = ''
@@ -71,7 +71,7 @@ export function makeQuoteCard(star: HighlightRecord & { book_title?: string }): 
   g.fillStyle = 'rgba(146,116,67,0.95)'
   g.fillText(`——《${star.book_title ?? ''}》`, 100, Math.min(y + 60, H - 170))
   g.font = "22px 'Microsoft YaHei UI', 'PingFang SC', sans-serif"
-  g.fillStyle = 'rgba(150,110,60,0.95)'
+  g.fillStyle = 'rgba(120,118,113,0.95)'
   g.fillText('✦ 摘星实录 · 我在书页里摘下的星', 100, H - 90)
 
   return c.toDataURL('image/png')

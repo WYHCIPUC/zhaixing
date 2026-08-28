@@ -23,7 +23,6 @@ export default function SkyView() {
   const [selectMode, setSelectMode] = useState(false)
   const [multiSel, setMultiSel] = useState<number[]>([])
   const [activeNebula, setActiveNebula] = useState<NebulaRecord | null>(null)
-  const [focusNebula, setFocusNebula] = useState<number | null>(null)
 
   const reload = useCallback(async (): Promise<void> => {
     const d = await window.api.getStarMap()
@@ -157,10 +156,9 @@ export default function SkyView() {
             <button
               key={n.id}
               onClick={() => {
-                setFocusNebula(null)
-                setActiveNebula(n)
+                  setActiveNebula(n)
               }}
-              className="rounded-full border border-[var(--line)] px-3 py-0.5 text-[11.5px] text-[var(--text-dim)] transition-colors hover:border-[rgba(224,102,44,0.5)] hover:text-[var(--text)]"
+              className="rounded-full border border-[var(--line)] px-3 py-0.5 text-[11.5px] text-[var(--text-dim)] transition-colors hover:border-[rgba(221,91,0,0.5)] hover:text-[var(--text)]"
               title={`${n.summary}\n（${n.source === 'ai' ? 'AI 聚类' : '自造'} · ${n.star_count ?? 0} 颗星）`}
             >
               {n.source === 'ai' ? '☁' : '⭘'} {n.name} <span className="opacity-60">{n.star_count}</span>
@@ -202,7 +200,7 @@ export default function SkyView() {
 
         {/* 圈选命名条 */}
         {selectMode && (
-          <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[rgba(224,102,44,0.4)]  px-5 py-2.5 shadow-xl">
+          <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[rgba(221,91,0,0.4)]  px-5 py-2.5 shadow-xl">
             <input
               id="nebula-name-input"
               className="input w-[220px] py-1"
@@ -252,7 +250,6 @@ export default function SkyView() {
             stars={(data?.stars ?? []).filter((s) => s.nebula_ids.includes(activeNebula.id))}
             onClose={() => {
               setActiveNebula(null)
-              setFocusNebula(null)
             }}
             onChanged={() => void reload()}
             onOpenStar={(id) => {
@@ -273,7 +270,6 @@ export default function SkyView() {
           onOpenStar={openStar}
         />
       )}
-      {focusNebula !== null && <span className="hidden">{focusNebula}</span>}
     </div>
   )
 }

@@ -9,3 +9,4 @@ android/.gradle/
 android/app/build/
 android/local.properties
 *.keystore
+scripts/corrupted-backup/

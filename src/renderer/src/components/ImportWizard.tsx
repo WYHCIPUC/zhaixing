@@ -112,7 +112,7 @@ export default function ImportWizard({
 
           {parsed && !report && (
             <>
-              <div className="mb-4 flex flex-wrap items-center gap-4 rounded-lg border border-[var(--line)] bg-[#f4ead8]/70 px-4 py-2.5 text-[12.5px]">
+              <div className="mb-4 flex flex-wrap items-center gap-4 rounded-lg border border-[var(--line)] bg-[#f6f5f4] px-4 py-2.5 text-[12.5px]">
                 <span>
                   识别到 <b className="text-[var(--accent)]">{parsed.books.length}</b> 本书
                 </span>

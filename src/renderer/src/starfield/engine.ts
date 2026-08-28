@@ -73,6 +73,7 @@ export class StarfieldEngine {
   private sprites = new Map<string, HTMLCanvasElement>()
   private bg: HTMLCanvasElement | null = null
   private raf = 0
+  private paused = false
   private cam = { x: 0, y: 0, k: 1 }
   private camTarget: { x: number; y: number; k: number } | null = null
   private dragging = false
@@ -173,6 +174,16 @@ export class StarfieldEngine {
       { passive: false }
     )
 
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        cancelAnimationFrame(this.raf)
+        this.paused = true
+      } else if (this.paused) {
+        this.paused = false
+        this.loop()
+      }
+    })
+
     this.loop()
   }
 
@@ -256,7 +267,7 @@ export class StarfieldEngine {
     c.width = width
     c.height = height
     const g = c.getContext('2d')!
-    g.fillStyle = '#faf8f5'
+    g.fillStyle = '#ffffff'
     g.fillRect(0, 0, width, height)
 
     if (this.nodes.length === 0) return c.toDataURL('image/png')
@@ -301,7 +312,7 @@ export class StarfieldEngine {
     }
     g.globalCompositeOperation = 'source-over'
     g.font = "22px 'Microsoft YaHei UI', sans-serif"
-    g.fillStyle = 'rgba(90,80,70,0.75)'
+    g.fillStyle = 'rgba(120,118,113,0.8)'
     g.fillText('✦ 摘星实录 · 我的阅读星空', 40, height - 36)
     return c.toDataURL('image/png')
   }
@@ -331,7 +342,7 @@ export class StarfieldEngine {
       const y = rand() * h
       const r = rand() * 1.1 + 0.2
       const a = rand() * 0.35 + 0.06
-      g.fillStyle = [`rgba(150,120,90,${a})`, `rgba(150,120,90,${a})`, `rgba(170,140,105,${a})`][i % 3]
+      g.fillStyle = [`rgba(55,53,47,${a * 0.45})`, `rgba(55,53,47,${a * 0.45})`, `rgba(170,140,105,${a})`][i % 3]
       g.beginPath()
       g.arc(x, y, r, 0, Math.PI * 2)
       g.fill()
@@ -431,10 +442,10 @@ export class StarfieldEngine {
       const sb = this.screenOf(b)
       ctx.strokeStyle =
         e.kind === 'collision'
-          ? 'rgba(224,102,44,0.5)'
+          ? 'rgba(224,49,49,0.4)'
           : e.kind === 'manual'
-            ? 'rgba(217,119,6,0.45)'
-            : 'rgba(90,70,60,0.22)'
+            ? 'rgba(221,91,0,0.4)'
+            : 'rgba(55,53,47,0.15)'
       ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(sa.x, sa.y)
@@ -457,7 +468,7 @@ export class StarfieldEngine {
       }
       if (n.star.is_gem) {
         ctx.globalAlpha = 0.9
-        ctx.strokeStyle = 'rgba(180,110,10,0.9)'
+        ctx.strokeStyle = 'rgba(217,147,13,0.95)'
         ctx.lineWidth = 1
         ctx.beginPath()
         ctx.arc(s.x, s.y, n.r * this.cam.k + 6, 0, Math.PI * 2)

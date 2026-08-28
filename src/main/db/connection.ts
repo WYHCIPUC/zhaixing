@@ -29,12 +29,18 @@ export function getDbPath(): string {
 }
 
 // 每次启动轮换一份备份，防止升级/迁移损坏时无路可退
+// 滚动保留最近 3 份备份，避免单份备份在异常后才被覆盖
 export function backupDatabase(): string {
+  const dir = app.getPath('userData')
   const src = getDbPath()
-  const dest = path.join(app.getPath('userData'), 'zhaixing.backup.db')
-  if (fs.existsSync(src)) {
-    fs.copyFileSync(src, dest)
+  const oldest = path.join(dir, 'zhaixing.backup.2.db')
+  if (fs.existsSync(oldest)) fs.rmSync(oldest)
+  for (let i = 1; i >= 0; i--) {
+    const from = path.join(dir, `zhaixing.backup.${i}.db`)
+    if (fs.existsSync(from)) fs.copyFileSync(from, path.join(dir, `zhaixing.backup.${i + 1}.db`))
   }
+  const dest = path.join(dir, 'zhaixing.backup.0.db')
+  if (fs.existsSync(src)) fs.copyFileSync(src, dest)
   return dest
 }
 

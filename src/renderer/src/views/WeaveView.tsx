@@ -100,7 +100,7 @@ export default function WeaveView() {
           ).map(([k, label]) => (
             <button
               key={k}
-              className={`rounded-md px-3 py-1 text-[12.5px] ${mode === k ? 'bg-[rgba(224,102,44,0.15)] text-[var(--accent)]' : 'text-[var(--text-dim)]'}`}
+              className={`rounded-md px-3 py-1 text-[12.5px] ${mode === k ? 'bg-[rgba(221,91,0,0.15)] text-[var(--accent)]' : 'text-[var(--text-dim)]'}`}
               onClick={() => setMode(k)}
             >
               {label}
@@ -123,7 +123,7 @@ export default function WeaveView() {
                     key={n.id}
                     className={`block w-full rounded-lg border px-3 py-2 text-left text-[12.5px] transition-colors ${
                       activeNebula?.id === n.id
-                        ? 'border-[rgba(224,102,44,0.5)] text-[var(--text)]'
+                        ? 'border-[rgba(221,91,0,0.5)] text-[var(--text)]'
                         : 'border-[var(--line)] text-[var(--text-dim)] hover:text-[var(--text)]'
                     }`}
                     onClick={() => setActiveNebula(n)}
@@ -150,7 +150,7 @@ export default function WeaveView() {
                     <button
                       key={a.id}
                       className={`block w-full rounded-lg border px-3 py-2 text-left text-[12px] ${
-                        active?.id === a.id ? 'border-[rgba(224,102,44,0.5)]' : 'border-[var(--line)]'
+                        active?.id === a.id ? 'border-[rgba(221,91,0,0.5)]' : 'border-[var(--line)]'
                       }`}
                       onClick={() => {
                         setActive(a)

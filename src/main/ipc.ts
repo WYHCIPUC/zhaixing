@@ -33,7 +33,6 @@ import { pickGems, runAnalysis } from './ai/pipeline'
 import { createCapsule, getMeteor, listCapsules, markMeteorRevisited, nightFlightStars } from './db/meteor'
 import {
   deleteArticle,
-  getArticle,
   listArticles,
   saveArticleVersion,
   updateArticleTitle
