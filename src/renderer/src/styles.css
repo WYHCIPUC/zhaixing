@@ -45,6 +45,16 @@
   --tint-sky: #dcecfa;
   --tint-yellow: #fef7d6;
   --tint-gray: #f0eeec;
+
+  /* ---------- 动效令牌（v5 spec §3.1，全项目只准用这套值） ---------- */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1); /* 进出/响应一律此家族，禁 ease-in */
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); /* 屏内位移 */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* 抽屉/sheet 专用 */
+  --dur-1: 120ms; /* 按压/hover/焦点 */
+  --dur-2: 200ms; /* 弹层、tooltip、小面板、视图切换 */
+  --dur-3: 280ms; /* 抽屉、大面板进场 */
+  --dur-4: 450ms; /* 仅 §4.5 稀有时刻白名单可用 */
+  --stagger: 40ms; /* 组进出场间隔 */
 }
 
 html,

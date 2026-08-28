@@ -260,7 +260,9 @@ export class StarfieldEngine {
     this.mass = new Float32Array(n)
     this.nodes = data.stars.map((s, i) => {
       const len = Math.min(2.4, s.content.length / 90)
-      const r = 1.7 + len + (s.favorite ? 1.3 : 0) + (s.is_gem ? 1.6 : 0)
+      // 星等按幂律分布：绝大多数是暗小微星，少数是亮星（真实星空的亮度结构）
+      const pr = Math.pow(rand(), 2.4)
+      const r = 0.9 + pr * 4.6 + (s.favorite ? 1.1 : 0) + (s.is_gem ? 1.6 : 0)
       const core = s.nebula_ids[0] !== undefined ? (coreOf.get(s.nebula_ids[0]) ?? freeCore) : freeCore
       const dist = 60 + rand() * (60 + Math.sqrt(core.mass) * 3.2)
       const ang = rand() * Math.PI * 2
@@ -281,7 +283,7 @@ export class StarfieldEngine {
             ? (data.nebulae.find((x) => x.id === s.nebula_ids[0])?.color ?? s.book_color)
             : s.book_color,
         phase: rand() * Math.PI * 2,
-        bright: Math.min(1, 0.35 + s.revisit_count * 0.18 + (s.favorite ? 0.25 : 0)),
+        bright: Math.min(1, 0.16 + pr * 0.5 + s.revisit_count * 0.15 + (s.favorite ? 0.25 : 0)),
         spikes: r >= 3.4 || Boolean(s.is_gem),
         x: this.px[i],
         y: this.py[i]
@@ -448,6 +450,19 @@ export class StarfieldEngine {
     g.fillStyle = grad
     g.fillRect(0, 0, w, h)
 
+    // 深空远景色斑（星系辉光留下的微妙色彩变化）
+    const tints = ['rgba(30,48,110,0.3)', 'rgba(58,32,96,0.24)', 'rgba(14,52,74,0.22)', 'rgba(74,30,52,0.18)']
+    for (let i = 0; i < 7; i++) {
+      const x = rand() * w
+      const y = rand() * h
+      const r = (rand() * 0.3 + 0.18) * Math.max(w, h)
+      const grad3 = g.createRadialGradient(x, y, 0, x, y, r)
+      grad3.addColorStop(0, tints[i % tints.length])
+      grad3.addColorStop(1, 'rgba(0,0,0,0)')
+      g.fillStyle = grad3
+      g.fillRect(x - r, y - r, r * 2, r * 2)
+    }
+
     // 银河带（对角，高斯散布的密集尘埃 + 云雾亮斑）
     g.save()
     g.translate(w / 2, h / 2)
@@ -472,6 +487,17 @@ export class StarfieldEngine {
       grad2.addColorStop(0, `rgba(190,205,255,${rand() * 0.05 + 0.02})`)
       grad2.addColorStop(1, 'rgba(0,0,0,0)')
       g.fillStyle = grad2
+      g.fillRect(t - r, off - r, r * 2, r * 2)
+    }
+    // 尘埃暗裂缝（银河中央的暗带——真实照片的标志性特征）
+    for (let i = 0; i < Math.floor(46 * scale); i++) {
+      const t = (rand() - 0.5) * len
+      const off = ((rand() + rand() + rand()) / 1.5 - 1) * band * 0.28
+      const r = (rand() * 30 + 8) * scale
+      const gradD = g.createRadialGradient(t, off, 0, t, off, r)
+      gradD.addColorStop(0, 'rgba(3,4,10,' + (rand() * 0.16 + 0.1) + ')')
+      gradD.addColorStop(1, 'rgba(0,0,0,0)')
+      g.fillStyle = gradD
       g.fillRect(t - r, off - r, r * 2, r * 2)
     }
     g.restore()
@@ -654,18 +680,25 @@ export class StarfieldEngine {
 
     ctx.globalCompositeOperation = 'lighter'
 
-    // 星云辉光（跟随成员实际聚拢位置）
-    for (const hz of this.haze) {
+    // 星云辉光：多层不规则气团（像真实发射星云的纤维状结构）
+    for (let hi = 0; hi < this.haze.length; hi++) {
+      const hz = this.haze[hi]
       const hx = (hz.wx - this.cam.x) * this.cam.k + w / 2
       const hy = (hz.wy - this.cam.y) * this.cam.k + h / 2
-      const r = hz.r * this.cam.k
-      if (hx < -r || hx > w + r || hy < -r || hy > h + r) continue
-      const grad = ctx.createRadialGradient(hx, hy, 0, hx, hy, Math.max(40, r))
-      grad.addColorStop(0, colorWithAlpha(hz.color, 0.1))
-      grad.addColorStop(0.7, colorWithAlpha(hz.color, 0.04))
-      grad.addColorStop(1, 'rgba(0,0,0,0)')
-      ctx.fillStyle = grad
-      ctx.fillRect(hx - r, hy - r, r * 2, r * 2)
+      const base = hz.r * this.cam.k
+      if (hx < -base * 2 || hx > w + base * 2 || hy < -base * 2 || hy > h + base * 2) continue
+      const jr = mulberry32(Math.floor(hz.wx * 7 + hz.wy * 13 + hi * 101))
+      for (let b = 0; b < 4; b++) {
+        const ox = (jr() - 0.5) * base * 0.9
+        const oy = (jr() - 0.5) * base * 0.7
+        const r = base * (0.45 + jr() * 0.5)
+        const col = b === 3 ? HAZE_PALETTE[(hi + 3) % HAZE_PALETTE.length] : hz.color
+        const grad = ctx.createRadialGradient(hx + ox, hy + oy, 0, hx + ox, hy + oy, Math.max(40, r))
+        grad.addColorStop(0, colorWithAlpha(col, b === 0 ? 0.085 : 0.05))
+        grad.addColorStop(1, 'rgba(0,0,0,0)')
+        ctx.fillStyle = grad
+        ctx.fillRect(hx + ox - r, hy + oy - r, r * 2, r * 2)
+      }
     }
 
     // 共鸣星桥
@@ -692,17 +725,27 @@ export class StarfieldEngine {
       const sx = this.screenX(i)
       const sy = this.screenY(i)
       if (sx < -80 || sx > w + 80 || sy < -80 || sy > h + 80) continue
-      const sprite = this.spriteFor(n.color)
       const tw = 0.82 + 0.18 * Math.sin(t * 1.4 + n.phase)
-      const size = (n.r * 7.5 + (this.highlightIds.has(n.id) ? 10 : 0)) * this.cam.k * tw
-      ctx.globalAlpha = Math.min(1, 0.35 + n.bright * 0.75) * tw
-      ctx.drawImage(sprite, sx - size / 2, sy - size / 2, size, size)
-      if (this.highlightIds.has(n.id)) {
-        ctx.globalAlpha = 0.95
-        ctx.drawImage(sprite, sx - size / 2 - 4, sy - size / 2 - 4, size + 8, size + 8)
-      }
-      if (n.spikes && this.cam.k > 0.55) {
-        this.paintSpikes(ctx, sx, sy, size * 0.85, n.color, 0.4 * tw)
+      if (n.r < 2.2) {
+        // 暗小微星：实心小点（真实照片中绝大多数星是 1px 亮斑）
+        const rr = Math.max(0.5, n.r * this.cam.k) * (0.85 + 0.15 * tw)
+        ctx.globalAlpha = Math.min(1, 0.22 + n.bright * 0.62) * tw
+        ctx.fillStyle = n.color
+        ctx.beginPath()
+        ctx.arc(sx, sy, rr, 0, Math.PI * 2)
+        ctx.fill()
+      } else {
+        const sprite = this.spriteFor(n.color)
+        const size = (n.r * 7.5 + (this.highlightIds.has(n.id) ? 10 : 0)) * this.cam.k * tw
+        ctx.globalAlpha = Math.min(1, 0.3 + n.bright * 0.75) * tw
+        ctx.drawImage(sprite, sx - size / 2, sy - size / 2, size, size)
+        if (this.highlightIds.has(n.id)) {
+          ctx.globalAlpha = 0.95
+          ctx.drawImage(sprite, sx - size / 2 - 4, sy - size / 2 - 4, size + 8, size + 8)
+        }
+        if (n.spikes && this.cam.k > 0.55) {
+          this.paintSpikes(ctx, sx, sy, size * 0.85, n.color, 0.4 * tw)
+        }
       }
       if (n.star.is_gem) {
         ctx.globalAlpha = 0.9
