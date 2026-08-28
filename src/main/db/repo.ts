@@ -69,8 +69,11 @@ export function findBook(db: DB, title: string, author: string): BookRecord | nu
   return row ?? null
 }
 
+const MORANDI = ['#c97b4a', '#b96a6a', '#8f9a6d', '#6f8fa8', '#a483b8', '#c9a227', '#7a9e9f', '#c08552']
 export function insertBook(db: DB, title: string, author: string): BookRecord {
-  const info = db.prepare(`INSERT INTO books(title, author) VALUES (?, ?)`).run(title, author)
+  let h = 0
+  for (const ch of title) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  const info = db.prepare(`INSERT INTO books(title, author, color) VALUES (?, ?, ?)`).run(title, author, MORANDI[h % MORANDI.length])
   return getBook(db, Number(info.lastInsertRowid))!
 }
 

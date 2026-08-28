@@ -96,13 +96,47 @@ export class StarfieldEngine {
     this.ro = new ResizeObserver(() => this.resize())
     this.ro.observe(canvas.parentElement ?? canvas)
     this.resize()
+    // 触屏：禁掉浏览器默认手势（滚动/系统缩放），单指拖动才能平移星图
+    canvas.style.touchAction = 'none'
+
+    // 双指捏合缩放（MM2）：pointer 级跟踪，两指走 pinch，松回一指恢复拖动/点选
+    const pointers = new Map<number, { x: number; y: number }>()
+    let pinchDist = 0
+
+    const zoomAt = (mx: number, my: number, factor: number): void => {
+      const rect = canvas.getBoundingClientRect()
+      const wx = (mx - rect.width / 2) / this.cam.k + this.cam.x
+      const wy = (my - rect.height / 2) / this.cam.k + this.cam.y
+      this.cam.k = Math.min(6, Math.max(0.3, this.cam.k * factor))
+      this.cam.x = wx - (mx - rect.width / 2) / this.cam.k
+      this.cam.y = wy - (my - rect.height / 2) / this.cam.k
+      this.camTarget = null
+    }
 
     canvas.addEventListener('pointerdown', (e) => {
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (pointers.size === 2) {
+        const [a, b] = [...pointers.values()]
+        pinchDist = Math.hypot(a.x - b.x, a.y - b.y)
+        this.dragging = false
+        return
+      }
       this.dragging = true
       this.dragMoved = false
       this.lastMouse = { x: e.clientX, y: e.clientY }
     })
     window.addEventListener('pointermove', (e) => {
+      if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (pointers.size >= 2) {
+        const [a, b] = [...pointers.values()]
+        const d = Math.hypot(a.x - b.x, a.y - b.y)
+        if (pinchDist > 0 && d > 0) {
+          const rect = canvas.getBoundingClientRect()
+          zoomAt((a.x + b.x) / 2 - rect.left, (a.y + b.y) / 2 - rect.top, d / pinchDist)
+        }
+        pinchDist = d
+        return
+      }
       const rect = this.canvas.getBoundingClientRect()
       const mx = e.clientX - rect.left
       const my = e.clientY - rect.top
@@ -118,8 +152,15 @@ export class StarfieldEngine {
         this.handleHover(mx, my)
       }
     })
-    window.addEventListener('pointerup', () => {
+    window.addEventListener('pointerup', (e) => {
+      pointers.delete(e.pointerId)
+      if (pointers.size < 2) pinchDist = 0
       if (this.dragging && !this.dragMoved) this.handleClick()
+      this.dragging = false
+    })
+    window.addEventListener('pointercancel', (e) => {
+      pointers.delete(e.pointerId)
+      if (pointers.size < 2) pinchDist = 0
       this.dragging = false
     })
     canvas.addEventListener(
@@ -127,15 +168,7 @@ export class StarfieldEngine {
       (e) => {
         e.preventDefault()
         const factor = e.deltaY < 0 ? 1.12 : 0.89
-        const rect = this.canvas.getBoundingClientRect()
-        const mx = e.clientX - rect.left
-        const my = e.clientY - rect.top
-        const wx = (mx - rect.width / 2) / this.cam.k + this.cam.x
-        const wy = (my - rect.height / 2) / this.cam.k + this.cam.y
-        this.cam.k = Math.min(6, Math.max(0.3, this.cam.k * factor))
-        this.cam.x = wx - (mx - rect.width / 2) / this.cam.k
-        this.cam.y = wy - (my - rect.height / 2) / this.cam.k
-        this.camTarget = null
+        zoomAt(e.clientX - canvas.getBoundingClientRect().left, e.clientY - canvas.getBoundingClientRect().top, factor)
       },
       { passive: false }
     )
@@ -223,7 +256,7 @@ export class StarfieldEngine {
     c.width = width
     c.height = height
     const g = c.getContext('2d')!
-    g.fillStyle = '#faf5ec'
+    g.fillStyle = '#faf8f5'
     g.fillRect(0, 0, width, height)
 
     if (this.nodes.length === 0) return c.toDataURL('image/png')
@@ -268,7 +301,7 @@ export class StarfieldEngine {
     }
     g.globalCompositeOperation = 'source-over'
     g.font = "22px 'Microsoft YaHei UI', sans-serif"
-    g.fillStyle = 'rgba(146,116,67,0.7)'
+    g.fillStyle = 'rgba(90,80,70,0.75)'
     g.fillText('✦ 摘星实录 · 我的阅读星空', 40, height - 36)
     return c.toDataURL('image/png')
   }
@@ -298,7 +331,7 @@ export class StarfieldEngine {
       const y = rand() * h
       const r = rand() * 1.1 + 0.2
       const a = rand() * 0.35 + 0.06
-      g.fillStyle = `rgba(196,148,74,${a})`
+      g.fillStyle = [`rgba(150,120,90,${a})`, `rgba(150,120,90,${a})`, `rgba(170,140,105,${a})`][i % 3]
       g.beginPath()
       g.arc(x, y, r, 0, Math.PI * 2)
       g.fill()
@@ -398,10 +431,10 @@ export class StarfieldEngine {
       const sb = this.screenOf(b)
       ctx.strokeStyle =
         e.kind === 'collision'
-          ? 'rgba(220,80,80,0.42)'
+          ? 'rgba(224,102,44,0.5)'
           : e.kind === 'manual'
-            ? 'rgba(180,110,10,0.35)'
-            : 'rgba(217,122,30,0.2)'
+            ? 'rgba(217,119,6,0.45)'
+            : 'rgba(90,70,60,0.22)'
       ctx.lineWidth = 1
       ctx.beginPath()
       ctx.moveTo(sa.x, sa.y)
@@ -439,7 +472,7 @@ export class StarfieldEngine {
       }
       if (n.id === this.selectedId) {
         ctx.globalAlpha = 1
-        ctx.strokeStyle = 'rgba(120,70,10,0.85)'
+        ctx.strokeStyle = 'rgba(43,39,35,0.75)'
         ctx.beginPath()
         ctx.arc(s.x, s.y, n.r * this.cam.k + 4, 0, Math.PI * 2)
         ctx.stroke()

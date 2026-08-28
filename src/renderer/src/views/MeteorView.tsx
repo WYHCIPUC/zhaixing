@@ -35,8 +35,8 @@ export default function MeteorView() {
         initial={{ x: '-20vw', y: '-10vh', opacity: 0 }}
         animate={{ x: '60vw', y: '30vh', opacity: [0, 1, 1, 0] }}
         transition={{ duration: 2.2, ease: 'easeOut' }}
-        className="pointer-events-none absolute right-0 top-0 h-px w-[160px] rotate-[24deg] bg-gradient-to-l from-[#e8963c] via-[rgba(240,170,60,0.9)] to-transparent"
-        style={{ boxShadow: '0 0 12px rgba(251,191,36,0.8)' }}
+        className="pointer-events-none absolute right-0 top-0 h-px w-[160px] rotate-[24deg] bg-gradient-to-l from-[#e0662c] via-[rgba(240,150,60,0.85)] to-transparent"
+        style={{ boxShadow: '0 0 12px rgba(224,102,44,0.7)' }}
       />
 
       <header className="mb-6 flex items-center justify-between">

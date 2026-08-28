@@ -255,7 +255,7 @@ export default function BookDetailView({
         <motion.div
           initial={{ y: 40, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-[rgba(217,122,30,0.4)] bg-[#fffdf8] px-5 py-2.5 shadow-xl"
+          className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-[rgba(224,102,44,0.4)]  px-5 py-2.5 shadow-xl"
         >
           <span className="text-[13px]">已选 {selected.size} 颗星</span>
           <button className="btn btn-primary py-1" disabled={selected.size < 2} onClick={beginMerge}>
@@ -273,7 +273,7 @@ export default function BookDetailView({
           <motion.div
             initial={{ scale: 0.96, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="panel w-[640px] bg-[#fffdf8] p-6"
+            className="panel w-[640px]  p-6"
           >
             <div className="text-[15px] font-medium">合并 {selected.size} 颗星</div>
             <p className="mt-1 text-[12px] text-[var(--text-dim)]">
@@ -365,7 +365,7 @@ function StarCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.04, 0.4), type: 'spring', stiffness: 280, damping: 26 }}
-      className={`panel group relative p-4 transition-colors ${selected ? 'border-[rgba(217,122,30,0.55)]' : ''}`}
+      className={`panel group relative p-4 transition-colors ${selected ? 'border-[rgba(224,102,44,0.55)]' : ''}`}
     >
       <div
         className="absolute bottom-2 left-0 top-2 w-[3px] rounded-full opacity-50"

@@ -39,25 +39,27 @@ export default function App() {
   }, [])
 
   return (
-    <div className="flex h-full flex-col md:flex-row">
+    <div className="relative flex h-full flex-col md:flex-row">
       <Toaster
         theme="light"
         position="bottom-center"
         gap={8}
         toastOptions={{
           style: {
-            background: 'rgba(255, 253, 248, 0.97)',
-            border: '1px solid rgba(146,116,67,0.3)',
-            color: '#43382b'
+            background: 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255,255,255,0.9)',
+            boxShadow: '0 8px 32px rgba(150, 100, 180, 0.18)',
+            color: '#322b3d'
           }
         }}
       />
-      <div className="hidden md:block">
+      <div className="relative z-10 hidden md:block">
         <Sidebar view={view} onNavigate={(v) => { setView(v); if (v !== 'shelf') setBookId(null) }} />
       </div>
       <MobileTopBar onSearch={() => setSearchOpen(true)} />
 
-      <main className="flex-1 overflow-hidden pb-[56px] md:pb-0">
+      <main className="relative z-10 flex-1 overflow-hidden pb-[56px] md:pb-0">
         <AnimatePresence mode="wait">
           <motion.div
             key={view + (bookId ?? '')}

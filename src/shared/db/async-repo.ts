@@ -8,7 +8,11 @@ import type {
   OverviewStats,
   ParsedBook,
   SearchHit,
-  ThoughtRecord
+  StarMapData,
+  StarMapStar,
+  ThoughtRecord,
+  LinkRecord,
+  NebulaRecord
 } from '@shared/types'
 import { starHashAsync } from '../hash'
 import { buildFtsQuery, cjkSplit } from './fts'
@@ -542,4 +546,195 @@ export async function wereadSyncBook(db: Db, deps: WereadSyncDeps): Promise<Were
   }
 
   return report
+}
+
+// ---------- 星穹图谱（桌面 nebula.ts 同语义） ----------
+
+export async function listNebulae(db: Db): Promise<NebulaRecord[]> {
+  return db.query(
+    `SELECT n.*, (SELECT COUNT(*) FROM nebula_stars ns WHERE ns.nebula_id = n.id) AS star_count
+     FROM nebulae n ORDER BY n.source DESC, star_count DESC`
+  )
+}
+
+export async function createNebula(
+  db: Db,
+  name: string,
+  starIds: number[],
+  summary = '',
+  source: 'ai' | 'user' = 'user',
+  color: string | null = null
+): Promise<NebulaRecord> {
+  let id = 0
+  await withTransaction(db, async () => {
+    await db.run(`INSERT INTO nebulae(name, summary, source, color) VALUES (?, ?, ?, ?)`, [
+      name,
+      summary,
+      source,
+      color
+    ])
+    id = await lastId(db)
+    for (const sid of starIds) {
+      await db.run(`INSERT OR IGNORE INTO nebula_stars(nebula_id, highlight_id) VALUES (?, ?)`, [id, sid])
+    }
+  })
+  const rows = await db.query<NebulaRecord>(
+    `SELECT n.*, (SELECT COUNT(*) FROM nebula_stars ns WHERE ns.nebula_id = n.id) AS star_count
+     FROM nebulae n WHERE n.id = ?`,
+    [id]
+  )
+  return rows[0]
+}
+
+export async function updateNebula(
+  db: Db,
+  id: number,
+  patch: { name?: string; summary?: string; color?: string | null }
+): Promise<void> {
+  const fields: string[] = []
+  const values: unknown[] = []
+  for (const k of ['name', 'summary', 'color'] as const) {
+    if (patch[k] !== undefined) {
+      fields.push(`${k} = ?`)
+      values.push(patch[k])
+    }
+  }
+  if (fields.length === 0) return
+  values.push(id)
+  await db.run(`UPDATE nebulae SET ${fields.join(', ')} WHERE id = ?`, values)
+}
+
+export async function deleteNebula(db: Db, id: number): Promise<void> {
+  await db.run(`DELETE FROM nebulae WHERE id = ?`, [id])
+}
+
+export async function addStarsToNebula(db: Db, nebulaId: number, starIds: number[]): Promise<void> {
+  for (const sid of starIds) {
+    await db.run(`INSERT OR IGNORE INTO nebula_stars(nebula_id, highlight_id) VALUES (?, ?)`, [nebulaId, sid])
+  }
+}
+
+export async function removeStarFromNebula(db: Db, nebulaId: number, starId: number): Promise<void> {
+  await db.run(`DELETE FROM nebula_stars WHERE nebula_id = ? AND highlight_id = ?`, [nebulaId, starId])
+}
+
+// ---------- 连线 ----------
+
+const LINK_JOIN_SQL = `
+  SELECT l.*,
+    hf.content AS from_content, ht.content AS to_content,
+    bf.title AS from_book, bt.title AS to_book,
+    hf.chapter AS from_chapter, ht.chapter AS to_chapter
+  FROM links l
+  JOIN highlights hf ON hf.id = l.from_highlight
+  JOIN highlights ht ON ht.id = l.to_highlight
+  JOIN books bf ON bf.id = hf.book_id
+  JOIN books bt ON bt.id = ht.book_id`
+
+export async function listLinks(db: Db, status: 'suggested' | 'confirmed'): Promise<LinkRecord[]> {
+  return db.query(`${LINK_JOIN_SQL} WHERE l.status = ? ORDER BY l.id DESC LIMIT 500`, [status])
+}
+
+export async function upsertLink(
+  db: Db,
+  fromId: number,
+  toId: number,
+  kind: 'twin' | 'collision' | 'manual',
+  status: 'suggested' | 'confirmed',
+  note: string,
+  sim: number | null
+): Promise<{ added: boolean }> {
+  const exists = await db.query<{ id: number; status: string }>(
+    `SELECT id, status FROM links WHERE kind = ? AND (
+       (from_highlight = ? AND to_highlight = ?) OR (from_highlight = ? AND to_highlight = ?))`,
+    [kind, fromId, toId, toId, fromId]
+  )
+  if (exists[0]) {
+    if (exists[0].status === 'dismissed') {
+      await db.run(`UPDATE links SET status = 'suggested', note = ?, sim = ? WHERE id = ?`, [
+        note,
+        sim,
+        exists[0].id
+      ])
+      return { added: true }
+    }
+    return { added: false }
+  }
+  await db.run(
+    `INSERT INTO links(from_highlight, to_highlight, kind, status, note, sim) VALUES (?, ?, ?, ?, ?, ?)`,
+    [fromId, toId, kind, status, note, sim]
+  )
+  return { added: true }
+}
+
+export async function decideLink(db: Db, id: number, status: 'confirmed' | 'dismissed'): Promise<void> {
+  await db.run(`UPDATE links SET status = ? WHERE id = ?`, [status, id])
+}
+
+export async function deleteLink(db: Db, id: number): Promise<void> {
+  await db.run(`DELETE FROM links WHERE id = ?`, [id])
+}
+
+export async function createManualLink(db: Db, fromId: number, toId: number, note: string): Promise<void> {
+  await upsertLink(db, fromId, toId, 'manual', 'confirmed', note, null)
+}
+
+// ---------- 镇星 / 重访 ----------
+
+export async function setGem(db: Db, starId: number): Promise<void> {
+  await db.run(`UPDATE books SET gem_highlight_id = ? WHERE id = (SELECT book_id FROM highlights WHERE id = ?)`, [
+    starId,
+    starId
+  ])
+}
+
+export async function bumpRevisit(db: Db, starId: number): Promise<void> {
+  await db.run(
+    `UPDATE highlights SET revisit_count = revisit_count + 1, last_revisit_at = datetime('now','localtime') WHERE id = ?`,
+    [starId]
+  )
+}
+
+export async function topRevisited(db: Db, limit: number): Promise<HighlightRecord[]> {
+  return db.query(
+    `SELECT h.*, b.title AS book_title FROM highlights h JOIN books b ON b.id = h.book_id
+     WHERE h.revisit_count > 0 ORDER BY h.revisit_count DESC, h.id DESC LIMIT ?`,
+    [limit]
+  )
+}
+
+// ---------- 星图总览（桌面 nebula.getStarMap 同语义） ----------
+
+export async function getStarMap(db: Db): Promise<StarMapData> {
+  const nebulae = await listNebulae(db)
+  const links = await listLinks(db, 'confirmed')
+  const membership = await db.query<{ nebula_id: number; highlight_id: number }>(
+    `SELECT nebula_id, highlight_id FROM nebula_stars`
+  )
+  const gemRows = await db.query<{ gem_highlight_id: number }>(
+    `SELECT gem_highlight_id FROM books WHERE gem_highlight_id IS NOT NULL`
+  )
+  const gems = new Set(gemRows.map((r) => r.gem_highlight_id))
+  const books = await db.query<{ id: number; title: string; color: string }>(
+    `SELECT id, title, color FROM books`
+  )
+  const bookMap = new Map(books.map((b) => [b.id, b]))
+  const nebByStar = new Map<number, number[]>()
+  for (const m of membership) {
+    if (!nebByStar.has(m.highlight_id)) nebByStar.set(m.highlight_id, [])
+    nebByStar.get(m.highlight_id)!.push(m.nebula_id)
+  }
+  const stars: StarMapStar[] = []
+  for (const b of books) {
+    for (const h of await listStars(db, b.id)) {
+      stars.push({
+        ...h,
+        book_title: b.title,
+        book_color: bookMap.get(b.id)?.color ?? '#e8963c',
+        nebula_ids: nebByStar.get(h.id) ?? [],
+        is_gem: gems.has(h.id)
+      })
+    }
+  }
+  return { stars, nebulae, links }
 }

@@ -43,7 +43,7 @@ export default function SearchOverlay({
       <motion.div
         initial={{ scale: 0.97, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="panel w-[720px] max-w-[90vw] overflow-hidden bg-[#fffdf8]"
+        className="panel w-[720px] max-w-[90vw] overflow-hidden "
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-[var(--line)] px-5 py-3">

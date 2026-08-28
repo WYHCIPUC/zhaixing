@@ -160,7 +160,7 @@ export default function SkyView() {
                 setFocusNebula(null)
                 setActiveNebula(n)
               }}
-              className="rounded-full border border-[var(--line)] px-3 py-0.5 text-[11.5px] text-[var(--text-dim)] transition-colors hover:border-[rgba(217,122,30,0.5)] hover:text-[var(--text)]"
+              className="rounded-full border border-[var(--line)] px-3 py-0.5 text-[11.5px] text-[var(--text-dim)] transition-colors hover:border-[rgba(224,102,44,0.5)] hover:text-[var(--text)]"
               title={`${n.summary}\n（${n.source === 'ai' ? 'AI 聚类' : '自造'} · ${n.star_count ?? 0} 颗星）`}
             >
               {n.source === 'ai' ? '☁' : '⭘'} {n.name} <span className="opacity-60">{n.star_count}</span>
@@ -188,7 +188,7 @@ export default function SkyView() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="pointer-events-none absolute z-20 max-w-[320px] rounded-lg border border-[var(--line)] bg-[#fffdf6f0] px-3 py-2"
+              className="pointer-events-none absolute z-20 max-w-[320px] rounded-lg border border-[var(--line)]  px-3 py-2"
               style={{ left: Math.min(hover.x + 14, (canvasHost.current?.clientWidth ?? 800) - 340), top: hover.y + 14 }}
             >
               <div className="serif line-clamp-3 text-[12px] leading-6">{hover.star.content}</div>
@@ -202,7 +202,7 @@ export default function SkyView() {
 
         {/* 圈选命名条 */}
         {selectMode && (
-          <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[rgba(217,122,30,0.4)] bg-[#fffdf8] px-5 py-2.5 shadow-xl">
+          <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[rgba(224,102,44,0.4)]  px-5 py-2.5 shadow-xl">
             <input
               id="nebula-name-input"
               className="input w-[220px] py-1"

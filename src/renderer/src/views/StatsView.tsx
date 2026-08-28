@@ -111,7 +111,7 @@ export default function StatsView() {
                     initial={{ width: 0 }}
                     animate={{ width: `${(t.count / maxTheme) * 100}%` }}
                     transition={{ duration: 0.6 }}
-                    className="h-full rounded-full bg-gradient-to-r from-[rgba(217,122,30,0.7)] to-[rgba(167,139,250,0.7)]"
+                    className="h-full rounded-full bg-[rgba(224,102,44,0.75)]"
                   />
                 </div>
                 <span className="w-6 text-[var(--text-dim)]">{t.count}</span>
@@ -176,9 +176,9 @@ function HeatMap({ daily }: { daily: DailyCount[] }): React.ReactElement {
   const max = Math.max(1, ...daily.map((d) => d.count))
 
   const color = (n: number): string => {
-    if (n === 0) return 'rgba(255,255,255,0.05)'
+    if (n === 0) return 'rgba(60,50,40,0.07)'
     const t = Math.min(1, n / max)
-    return `rgba(251,191,36,${0.2 + t * 0.8})`
+    return `rgba(224,102,44,${0.15 + t * 0.85})`
   }
 
   return (
@@ -219,13 +219,13 @@ function Radar({ spectrum }: { spectrum: SpiritSpectrum['spectrum'] }): React.Re
           key={f}
           points={spectrum.map((_, i) => pt(i, R * f).join(',')).join(' ')}
           fill="none"
-          stroke="rgba(255,255,255,0.08)"
+          stroke="rgba(60,50,40,0.1)"
         />
       ))}
       <polygon
         points={poly}
-        fill="rgba(251,191,36,0.18)"
-        stroke="rgba(251,191,36,0.8)"
+        fill="rgba(224,102,44,0.14)"
+        stroke="rgba(224,102,44,0.85)"
         strokeWidth={1.5}
         style={{
           transformOrigin: '100px 100px',

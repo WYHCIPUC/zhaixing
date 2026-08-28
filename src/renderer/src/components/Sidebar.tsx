@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { BarChart3, BookOpen, Feather, MoonStar, Settings, Sparkles } from 'lucide-react'
+import Hint from './Hint'
 import type { OverviewStats } from '@shared/types'
 import type { ViewKey } from '../App'
 
-const NAV: { key: ViewKey; label: string; icon: typeof BookOpen; hint?: string }[] = [
+const NAV: { key: ViewKey; label: string; icon: typeof BookOpen }[] = [
   { key: 'shelf', label: '书架', icon: BookOpen },
   { key: 'sky', label: '星穹', icon: Sparkles },
   { key: 'meteor', label: '流星', icon: MoonStar },
@@ -27,47 +28,57 @@ export default function Sidebar({
   }, [view])
 
   return (
-    <aside className="flex w-[210px] shrink-0 flex-col border-r border-[var(--line)] bg-[#f4ead8]/70 px-3 py-5">
+    <aside className="flex w-[210px] shrink-0 flex-col border-r border-[var(--line)] bg-[#f6f3ee] px-3 py-5">
       <div className="mb-8 px-2">
         <motion.div
           className="text-[19px] font-semibold tracking-wide"
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
         >
-          <span className="star-mark twinkle mr-1 inline-block">✦</span>
-          摘星<span className="text-[var(--text-dim)]">实录</span>
+          <span className="star-mark mr-1.5 inline-block">✦</span>
+          摘星实录
         </motion.div>
-        <div className="mt-1 text-[11px] text-[var(--text-dim)]">不教你记住，只帮你重逢</div>
+        <div className="mt-1 text-[11px] tracking-wide text-[var(--text-dim)]">
+          不教你记住，只帮你重逢
+        </div>
       </div>
 
-      <nav className="flex flex-col gap-1">
+      <nav className="flex flex-col gap-0.5">
         {NAV.map((n) => {
           const active = view === n.key
           const Icon = n.icon
           return (
-            <button
-              key={n.key}
-              onClick={() => onNavigate(n.key)}
-              className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[13.5px] transition-colors ${
-                active ? 'text-[var(--accent)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'
-              }`}
-            >
-              {active && (
-                <motion.span
-                  layoutId="nav-active"
-                  transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                  className="absolute inset-0 rounded-lg bg-[rgba(217,122,30,0.12)]"
-                />
-              )}
-              <motion.span
-                className="relative z-10 flex w-4 justify-center"
-                whileHover={{ scale: 1.15, rotate: active ? 0 : -6 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+            <Hint key={n.key} label={n.label} side="right">
+              <button
+                onClick={() => onNavigate(n.key)}
+                className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[13.5px] font-medium transition-colors ${
+                  active ? 'text-[var(--accent)]' : 'text-[var(--text-dim)] hover:text-[var(--text)]'
+                }`}
               >
-                <Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
-              </motion.span>
-              <span className="relative z-10">{n.label}</span>
-            </button>
+                {active && (
+                  <>
+                    <motion.span
+                      layoutId="nav-active"
+                      transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                      className="absolute inset-0 rounded-lg bg-[var(--accent-soft)]"
+                    />
+                    <motion.span
+                      layoutId="nav-bar"
+                      transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                      className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full bg-[var(--accent)]"
+                    />
+                  </>
+                )}
+                <motion.span
+                  className="relative z-10 flex w-4 justify-center"
+                  whileHover={{ scale: 1.12 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+                >
+                  <Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
+                </motion.span>
+                <span className="relative z-10">{n.label}</span>
+              </button>
+            </Hint>
           )
         })}
       </nav>

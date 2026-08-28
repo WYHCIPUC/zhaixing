@@ -68,7 +68,7 @@ export default function StarDrawer({
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 420, opacity: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-      className="absolute right-0 top-0 z-30 flex h-full w-[400px] max-w-[45vw] flex-col overflow-hidden border-l border-[var(--line)] bg-[#fffdf6f5]"
+      className="absolute right-0 top-0 z-30 flex h-full w-full flex-col overflow-hidden border-l border-[var(--line)]  md:w-[400px] md:max-w-[45vw]"
     >
       <header className="flex items-center justify-between border-b border-[var(--line)] px-5 py-3">
         <div className="text-[13px] text-[var(--text-dim)]">
@@ -132,7 +132,7 @@ export default function StarDrawer({
           }}
         />
         {socratic && (
-          <div className="mt-2 rounded-lg border border-[rgba(124,58,237,0.3)] bg-[rgba(124,58,237,0.07)] px-3 py-2 text-[12px] italic text-[#6d28d9]">
+          <div className="mt-2 rounded-lg border border-[rgba(224,102,44,0.35)] bg-[rgba(224,102,44,0.08)] px-3 py-2 text-[12px] italic text-[var(--accent)]">
             苏格拉底问：{socratic}
             <button className="ml-2 not-italic opacity-60 hover:opacity-100" onClick={() => setSocratic('')}>
               ×
@@ -255,7 +255,7 @@ export default function StarDrawer({
               return (
                 <button
                   key={l.id}
-                  className="block w-full rounded-lg border border-[var(--line)] px-3 py-2 text-left transition-colors hover:border-[rgba(217,122,30,0.4)]"
+                  className="block w-full rounded-lg border border-[var(--line)] px-3 py-2 text-left transition-colors hover:border-[rgba(224,102,44,0.4)]"
                   onClick={() => onJump(o.id)}
                 >
                   <div className="text-[10.5px] text-[var(--accent)]">
@@ -297,7 +297,7 @@ export default function StarDrawer({
             {linkSearch.map((h) => (
               <button
                 key={h.highlight_id}
-                className="block w-full rounded-lg border border-[var(--line)] px-3 py-1.5 text-left text-[12px] hover:border-[rgba(217,122,30,0.4)]"
+                className="block w-full rounded-lg border border-[var(--line)] px-3 py-1.5 text-left text-[12px] hover:border-[rgba(224,102,44,0.4)]"
                 onClick={() => void doLink(h.highlight_id)}
               >
                 <span className="serif line-clamp-1">{h.snippet}</span>

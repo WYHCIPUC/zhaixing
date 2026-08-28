@@ -58,7 +58,7 @@ export default function SyncDialog({
       <motion.div
         initial={{ scale: 0.96, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="panel flex max-h-[86vh] w-[760px] max-w-[92vw] flex-col overflow-hidden bg-[#fffdf8]"
+        className="panel flex max-h-[86vh] w-[760px] max-w-[92vw] flex-col overflow-hidden "
       >
         <header className="flex items-center justify-between border-b border-[var(--line)] px-6 py-4">
           <div className="flex items-center gap-2 text-[15px] font-medium">

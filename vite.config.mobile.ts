@@ -9,10 +9,15 @@ export default defineConfig(({ mode }) => ({
   root: 'src/renderer',
   base: './',
   plugins: [react(), tailwindcss()],
-  define:
-    mode === 'bench' || mode === 'diag'
+  define: {
+    ...(mode === 'bench' || mode === 'diag'
       ? { 'import.meta.env.VITE_ENTRY': JSON.stringify(mode) }
-      : {},
+      : {}),
+    // bench300 模式：n=300 分级压测（定位 Canvas 2D 的实时交互承载力）
+    ...(mode === 'bench300'
+      ? { 'import.meta.env.VITE_ENTRY': JSON.stringify('bench'), 'import.meta.env.VITE_STAR_COUNT': '300' }
+      : {})
+  },
   resolve: {
     alias: {
       '@renderer': resolve(__dirname, 'src/renderer/src'),

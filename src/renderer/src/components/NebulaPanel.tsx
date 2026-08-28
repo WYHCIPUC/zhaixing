@@ -31,7 +31,7 @@ export default function NebulaPanel({
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="absolute inset-x-0 bottom-0 z-30 max-h-[62%] overflow-hidden border-t border-[var(--line)] bg-[#fffdf6f8]"
+      className="absolute inset-x-0 bottom-0 z-30 max-h-[62%] overflow-hidden border-t border-[var(--line)] "
     >
       <header className="flex items-center gap-3 border-b border-[var(--line)] px-8 py-3">
         <div>
@@ -94,7 +94,7 @@ export default function NebulaPanel({
           {stars.map((s) => (
             <button
               key={s.id}
-              className="panel block p-3 text-left transition-colors hover:border-[rgba(217,122,30,0.4)]"
+              className="panel block p-3 text-left transition-colors hover:border-[rgba(224,102,44,0.4)]"
               onClick={() => onOpenStar(s.id)}
             >
               <div className="serif line-clamp-3 text-[12.5px] leading-6">{s.content}</div>

@@ -22,7 +22,7 @@ export function MobileTopBar({ onSearch }: { onSearch: () => void }): React.JSX.
   }, [])
 
   return (
-    <header className="flex items-center justify-between border-b border-[var(--line)] bg-black/20 px-4 py-2.5 md:hidden">
+    <header className="flex items-center justify-between border-b border-[var(--line)] bg-white px-4 py-2.5 md:hidden">
       <div className="flex items-baseline gap-2">
         <span className="text-[16px] font-semibold tracking-wide">
           <span className="star-mark twinkle mr-1 inline-block">✦</span>

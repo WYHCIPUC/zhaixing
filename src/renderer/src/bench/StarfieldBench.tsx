@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { StarfieldEngine } from '@renderer/starfield/engine'
 import type { StarMapData, StarMapStar } from '@shared/types'
 
-const STAR_COUNT = 1000
+const STAR_COUNT = Number(import.meta.env.VITE_STAR_COUNT) || 1000
 const SAMPLE_MS = 10_000
 
 const PALETTE = ['#7dd3fc', '#c4b5fd', '#fda4af', '#fcd34d', '#86efac']
@@ -113,7 +113,7 @@ export default function StarfieldBench() {
           pointerEvents: 'none'
         }}
       >
-        <div>门禁A · 星野压测 · {STAR_COUNT} 星</div>
+        <div>门禁A · 星野压测 · {STAR_COUNT} 星（n=URL参数）</div>
         <div>实时 FPS: {fps}</div>
         <div>已采样: {(elapsed / 1000).toFixed(0)}s / 10s</div>
         {avgFps !== null && (

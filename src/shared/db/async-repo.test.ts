@@ -241,3 +241,86 @@ describe('微信读书同步（对照桌面 sync/weread.ts syncBook，打桩数�
     expect(report2.thoughtsSkipped).toBe(1)
   })
 })
+
+// ---------- 星穹图谱（对照桌面 nebula.ts） ----------
+
+describe('星穹图谱（对照桌面 getStarMap/createNebula/listLinks/bumpRevisit）', () => {
+  it('建星云 → getStarMap 返回成员/星云/镇星', async () => {
+    await importParsed(db, parseWereadText(SAMPLE).books)
+    const { listBooks } = await import('./async-repo')
+    const book = (await listBooks(db))[0]
+    const stars = await listStars(db, book.id)
+
+    const { createNebula } = await import('./async-repo')
+    const neb = await createNebula(db, '重逢星云', stars.slice(0, 2).map((s) => s.id), '测试星云', 'user', '#aabbcc')
+    expect(neb.star_count).toBe(2)
+    expect(neb.name).toBe('重逢星云')
+
+    const { getStarMap, setGem } = await import('./async-repo')
+    await setGem(db, stars[0].id)
+    const map = await getStarMap(db)
+    expect(map.stars.length).toBe(3)
+    expect(map.nebulae.length).toBe(1)
+    expect(map.links.length).toBe(0)
+    const first = map.stars.find((s) => s.id === stars[0].id)!
+    expect(first.is_gem).toBe(true)
+    expect(first.nebula_ids).toContain(neb.id)
+    expect(first.book_title).toBe('测试书')
+  })
+
+  it('手动连线 upsert（含 dismissed 复活）与决定/删除', async () => {
+    await importParsed(db, parseWereadText(SAMPLE).books)
+    const stars = await listStars(db, (await listBooks(db))[0].id)
+    const { createManualLink, listLinks, decideLink, deleteLink } = await import('./async-repo')
+    await createManualLink(db, stars[0].id, stars[1].id, '共鸣')
+    let links = await listLinks(db, 'confirmed')
+    expect(links.length).toBe(1)
+    expect(links[0].from_content).toBe(stars[0].content)
+    expect(links[0].to_book).toBe('测试书')
+
+    // 重复建 → added=false
+    const { upsertLink } = await import('./async-repo')
+    expect((await upsertLink(db, stars[0].id, stars[1].id, 'manual', 'confirmed', 'x', null)).added).toBe(false)
+
+    // dismissed → 建议复活
+    await decideLink(db, links[0].id, 'dismissed')
+    expect(await listLinks(db, 'confirmed')).toHaveLength(0)
+    const revived = await upsertLink(db, stars[0].id, stars[1].id, 'manual', 'suggested', 'y', 0.9)
+    expect(revived.added).toBe(true)
+    expect(await listLinks(db, 'suggested')).toHaveLength(1)
+
+    await deleteLink(db, links[0].id)
+    expect(await listLinks(db, 'suggested')).toHaveLength(0)
+  })
+
+  it('重访计数与 topRevisited 排序', async () => {
+    await importParsed(db, parseWereadText(SAMPLE).books)
+    const stars = await listStars(db, (await listBooks(db))[0].id)
+    const { bumpRevisit, topRevisited } = await import('./async-repo')
+    await bumpRevisit(db, stars[0].id)
+    await bumpRevisit(db, stars[0].id)
+    await bumpRevisit(db, stars[1].id)
+    const top = await topRevisited(db, 10)
+    expect(top[0].id).toBe(stars[0].id)
+    expect(top[0].revisit_count).toBe(2)
+    expect(top[0].book_title).toBe('测试书')
+  })
+
+  it('星云增删成员与更新/删除', async () => {
+    await importParsed(db, parseWereadText(SAMPLE).books)
+    const stars = await listStars(db, (await listBooks(db))[0].id)
+    const { createNebula, addStarsToNebula, removeStarFromNebula, updateNebula, deleteNebula, getStarMap } =
+      await import('./async-repo')
+    const neb = await createNebula(db, 'N', [stars[0].id], '', 'user', null)
+    await addStarsToNebula(db, neb.id, [stars[1].id, stars[1].id])
+    await removeStarFromNebula(db, neb.id, stars[0].id)
+    await updateNebula(db, neb.id, { name: 'N2', color: '#ffffff' })
+    let map = await getStarMap(db)
+    expect(map.nebulae[0]).toMatchObject({ name: 'N2', star_count: 1, color: '#ffffff' })
+    expect(map.stars.find((s) => s.id === stars[1].id)!.nebula_ids).toContain(neb.id)
+    await deleteNebula(db, neb.id)
+    map = await getStarMap(db)
+    expect(map.nebulae).toHaveLength(0)
+    expect(map.stars.every((s) => s.nebula_ids.length === 0)).toBe(true)
+  })
+})

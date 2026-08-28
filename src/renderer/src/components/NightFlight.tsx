@@ -41,7 +41,7 @@ export default function NightFlight({ onClose }: { onClose: () => void }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-gradient-to-b from-[#fff8ec] to-[#fdecd2]"
+      className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-gradient-to-b from-[#fdf3e7] via-[#faf0e6] to-[#f1e9de]"
     >
       {/* 背景微星 */}
       <div className="pointer-events-none absolute inset-0 opacity-60">

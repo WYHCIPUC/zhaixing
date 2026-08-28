@@ -8,25 +8,39 @@ import { bookToMarkdown, type ExportedFile } from '@shared/exporters/markdown'
 import { applySchema } from '@shared/db/apply-schema'
 import {
   addArchive,
+  addStarsToNebula,
+  bumpRevisit,
+  createManualLink,
+  createNebula,
+  decideLink,
   deleteBook,
+  deleteLink,
+  deleteNebula,
   deleteStar,
   deleteThought,
   getBook,
   getSettings,
   getStar,
+  getStarMap,
   importParsed,
   insertThought,
   listArchives,
   listBooks,
+  listLinks,
   listStars,
+  listNebulae,
   mergeStars,
   overview,
+  removeStarFromNebula,
   search,
   setSettings,
   setStarTags,
   updateBook,
+  updateNebula,
   updateStar,
   updateThought,
+  topRevisited,
+  upsertLink,
   wereadSyncBook,
   type Db
 } from '@shared/db/async-repo'
@@ -97,6 +111,22 @@ export async function createMobileApi(db: Db): Promise<ZhaixingApi> {
     setStarTags: (starId: number, tags: string[]) => setStarTags(db, starId, tags),
 
     search: (q: string) => search(db, q),
+
+    // 星穹图谱（MM2）
+    getStarMap: () => getStarMap(db),
+    createNebula: (name: string, starIds: number[], summary?: string) =>
+      createNebula(db, name, starIds, summary ?? '', 'user', null),
+    addStarsToNebula: (nebulaId: number, starIds: number[]) => addStarsToNebula(db, nebulaId, starIds),
+    removeStarFromNebula: (nebulaId: number, starId: number) => removeStarFromNebula(db, nebulaId, starId),
+    updateNebula: (id: number, patch: { name?: string; summary?: string; color?: string | null }) =>
+      updateNebula(db, id, patch),
+    deleteNebula: (id: number) => deleteNebula(db, id),
+    listLinks: (status: 'suggested' | 'confirmed') => listLinks(db, status),
+    decideLink: (id: number, status: 'confirmed' | 'dismissed') => decideLink(db, id, status),
+    createLink: (fromId: number, toId: number, note: string) => createManualLink(db, fromId, toId, note),
+    deleteLink: (id: number) => deleteLink(db, id),
+    bumpRevisit: (starId: number) => bumpRevisit(db, starId),
+    topRevisited: (limit: number) => topRevisited(db, limit),
 
     exportMarkdown: async (bookId: number | 'all'): Promise<string> => {
       const files = await exportBookMarkdown(db, bookId)

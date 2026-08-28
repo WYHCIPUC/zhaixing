@@ -17,7 +17,8 @@
     "cap:run": "npm run cap:sync && cap run android",
     "build:mobile:bench": "vite build --config vite.config.mobile.ts --mode bench",
     "build:mobile:diag": "vite build --config vite.config.mobile.ts --mode diag",
-    "dist": "electron-vite build && electron-builder --win"
+    "dist": "electron-vite build && electron-builder --win",
+    "build:mobile:bench300": "vite build --config vite.config.mobile.ts --mode bench300"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.0",
@@ -42,6 +43,7 @@
     "@capacitor/android": "^8.5.0",
     "@capacitor/core": "^8.5.0",
     "@capacitor/filesystem": "^8.1.3",
+    "@radix-ui/react-tooltip": "^1.2.16",
     "better-sqlite3": "^12.11.1",
     "d3-force": "^3.0.0",
     "framer-motion": "^13.1.1",

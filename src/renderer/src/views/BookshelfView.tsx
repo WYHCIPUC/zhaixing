@@ -7,8 +7,8 @@ import ImportWizard from '../components/ImportWizard'
 import SyncDialog from '../components/SyncDialog'
 
 const BOOK_COLORS = [
-  '#f0a04b', '#e8b04b', '#f87171', '#fb923c',
-  '#eab308', '#fb7185', '#d97706', '#facc15'
+  '#ff9a5a', '#d9930d', '#8b5cf6', '#38bdf8',
+  '#f59e0b', '#ff6f91', '#7c6cf6', '#ffb347'
 ]
 
 function colorFor(title: string): string {
