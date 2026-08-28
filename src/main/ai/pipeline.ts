@@ -30,6 +30,13 @@ function jsonFromReply<T>(reply: string): T | null {
   }
 }
 
+// 阈值按 BAAI/bge-m3 实测分布校准（P50 邻近相似度 ≈ 0.61）：
+// 集群 0.62 ≈ 中位可入簇；双星 0.68 ≈ 前 10% 强共鸣；对撞带 0.50–0.68 为主张相近但相异的区间
+const CLUSTER_SIM = 0.62
+const TWIN_SIM = 0.68
+const COLLISION_SIM_MIN = 0.5
+const COLLISION_SIM_MAX = 0.68
+
 async function ensureEmbeddings(db: DB, cfg: AiConfig, report: AiRunReport): Promise<void> {
   const pending = starsWithoutEmbedding(db, 2000)
   if (pending.length === 0) return
@@ -93,7 +100,7 @@ async function buildAiNebulae(db: DB, cfg: AiConfig, report: AiRunReport): Promi
 
   const embeddings = allEmbeddings(db)
   if (embeddings.size < 6) return
-  const clusters = greedyCluster(embeddings, 0.82, 4)
+  const clusters = greedyCluster(embeddings, CLUSTER_SIM, 4)
   const contentOf = new Map(
     (db.prepare(`SELECT id, content, favorite FROM highlights`).all() as {
       id: number
@@ -142,7 +149,7 @@ async function suggestTwins(db: DB, report: AiRunReport): Promise<void> {
       r.book_id
     ])
   )
-  const pairs = findSimilarPairs(embeddings, bookOf, 0.86, 1.01, 300)
+  const pairs = findSimilarPairs(embeddings, bookOf, TWIN_SIM, 1.01, 300)
   for (const p of pairs) {
     const r = upsertLink(db, p.a, p.b, 'twin', 'suggested', '', p.sim)
     if (r.added) report.twins++
@@ -160,7 +167,7 @@ async function detectCollisions(db: DB, cfg: AiConfig, report: AiRunReport): Pro
       r.book_id
     ])
   )
-  const pairs = findSimilarPairs(embeddings, bookOf, 0.62, 0.86, 120)
+  const pairs = findSimilarPairs(embeddings, bookOf, COLLISION_SIM_MIN, COLLISION_SIM_MAX, 120)
   const contentOf = new Map(
     (db.prepare(`SELECT id, content FROM highlights`).all() as { id: number; content: string }[]).map((r) => [
       r.id,
