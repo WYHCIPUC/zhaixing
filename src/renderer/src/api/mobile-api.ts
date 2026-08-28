@@ -10,12 +10,14 @@ import {
   addArchive,
   addStarsToNebula,
   bumpRevisit,
+  createCapsule,
   createManualLink,
   createNebula,
   decideLink,
   deleteBook,
   deleteLink,
   deleteNebula,
+  getMeteor,
   deleteStar,
   deleteThought,
   getBook,
@@ -26,10 +28,13 @@ import {
   insertThought,
   listArchives,
   listBooks,
+  listCapsules,
   listLinks,
   listStars,
   listNebulae,
+  markMeteorRevisited,
   mergeStars,
+  nightFlightStars,
   overview,
   removeStarFromNebula,
   search,
@@ -127,6 +132,13 @@ export async function createMobileApi(db: Db): Promise<ZhaixingApi> {
     deleteLink: (id: number) => deleteLink(db, id),
     bumpRevisit: (starId: number) => bumpRevisit(db, starId),
     topRevisited: (limit: number) => topRevisited(db, limit),
+
+    // 重逢（MM3）
+    getMeteor: () => getMeteor(db),
+    markMeteorRevisited: (logId: number) => markMeteorRevisited(db, logId),
+    createCapsule: (starId: number, deliverAt: string, message: string) => createCapsule(db, starId, deliverAt, message),
+    listCapsules: () => listCapsules(db),
+    nightFlightStars: (limit: number) => nightFlightStars(db, limit),
 
     exportMarkdown: async (bookId: number | 'all'): Promise<string> => {
       const files = await exportBookMarkdown(db, bookId)

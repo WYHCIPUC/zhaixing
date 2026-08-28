@@ -11,7 +11,9 @@ import type {
   StarMapData,
   StarMapStar,
   ThoughtRecord,
+  CapsuleRecord,
   LinkRecord,
+  MeteorToday,
   NebulaRecord
 } from '@shared/types'
 import { starHashAsync } from '../hash'
@@ -737,4 +739,125 @@ export async function getStarMap(db: Db): Promise<StarMapData> {
     }
   }
   return { stars, nebulae, links }
+}
+
+// ---------- 流星与时间胶囊（桌面 meteor.ts 同语义） ----------
+
+export async function loadStarWithTitle(
+  db: Db,
+  highlightId: number
+): Promise<(HighlightRecord & { book_title: string }) | null> {
+  const rows = await db.query<HighlightRecord & { book_title: string }>(
+    `SELECT h.*, b.title AS book_title FROM highlights h JOIN books b ON b.id = h.book_id WHERE h.id = ?`,
+    [highlightId]
+  )
+  return rows[0] ?? null
+}
+
+function todayStr(): string {
+  const d = new Date()
+  const p = (n: number): string => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+async function capsuleMessageOf(db: Db, capsuleId: number | null): Promise<string | null> {
+  if (!capsuleId) return null
+  const rows = await db.query<{ message: string }>(`SELECT message FROM capsules WHERE id = ?`, [capsuleId])
+  return rows[0]?.message ?? null
+}
+
+// 今日流星：到期胶囊优先，其次从低重访星里挑；每天只生成一次
+export async function getMeteor(db: Db): Promise<MeteorToday> {
+  const date = todayStr()
+  const existing = await db.query<{
+    id: number
+    highlight_id: number
+    source: string
+    capsule_id: number | null
+  }>(`SELECT * FROM meteor_logs WHERE log_date = ? ORDER BY id DESC LIMIT 1`, [date])
+  if (existing[0]) {
+    return {
+      logId: existing[0].id,
+      date,
+      source: existing[0].source as 'random' | 'capsule',
+      capsuleMessage: await capsuleMessageOf(db, existing[0].capsule_id),
+      star: await loadStarWithTitle(db, existing[0].highlight_id)
+    }
+  }
+
+  const due = await db.query<{ id: number; highlight_id: number }>(
+    `SELECT id, highlight_id FROM capsules WHERE delivered = 0 AND deliver_at <= ? ORDER BY deliver_at LIMIT 1`,
+    [date]
+  )
+
+  let starId: number
+  let source: 'random' | 'capsule'
+  let capsuleId: number | null = null
+  if (due[0]) {
+    starId = due[0].highlight_id
+    source = 'capsule'
+    capsuleId = due[0].id
+    await db.run(`UPDATE capsules SET delivered = 1 WHERE id = ?`, [due[0].id])
+  } else {
+    const row = await db.query<{ id: number }>(
+      `SELECT id FROM highlights ORDER BY revisit_count ASC, last_revisit_at IS NOT NULL, last_revisit_at ASC, RANDOM() LIMIT 1`
+    )
+    if (!row[0]) return { logId: 0, date, source: 'random', capsuleMessage: null, star: null }
+    starId = row[0].id
+    source = 'random'
+  }
+
+  await db.run(`INSERT INTO meteor_logs(log_date, highlight_id, source, capsule_id) VALUES (?, ?, ?, ?)`, [
+    date,
+    starId,
+    source,
+    capsuleId
+  ])
+  const logId = await lastId(db)
+  return {
+    logId,
+    date,
+    source,
+    capsuleMessage: await capsuleMessageOf(db, capsuleId),
+    star: await loadStarWithTitle(db, starId)
+  }
+}
+
+export async function markMeteorRevisited(db: Db, logId: number): Promise<void> {
+  const rows = await db.query<{ highlight_id: number; revisited: number }>(
+    `SELECT highlight_id, revisited FROM meteor_logs WHERE id = ?`,
+    [logId]
+  )
+  if (!rows[0] || rows[0].revisited !== 0) return
+  await db.run(`UPDATE meteor_logs SET revisited = 1 WHERE id = ?`, [logId])
+  await db.run(
+    `UPDATE highlights SET revisit_count = revisit_count + 1, last_revisit_at = datetime('now','localtime') WHERE id = ?`,
+    [rows[0].highlight_id]
+  )
+}
+
+export async function createCapsule(db: Db, starId: number, deliverAt: string, message: string): Promise<number> {
+  await db.run(`INSERT INTO capsules(highlight_id, deliver_at, message) VALUES (?, ?, ?)`, [
+    starId,
+    deliverAt,
+    message
+  ])
+  return lastId(db)
+}
+
+export async function listCapsules(db: Db): Promise<CapsuleRecord[]> {
+  return db.query(
+    `SELECT c.*, h.content, b.title AS book_title FROM capsules c
+     JOIN highlights h ON h.id = c.highlight_id JOIN books b ON b.id = h.book_id
+     ORDER BY c.delivered ASC, c.deliver_at ASC LIMIT 100`
+  )
+}
+
+// 夜航模式：随机漫游（偏向低重访星）
+export async function nightFlightStars(db: Db, limit: number): Promise<(HighlightRecord & { book_title: string })[]> {
+  return db.query(
+    `SELECT h.*, b.title AS book_title FROM highlights h JOIN books b ON b.id = h.book_id
+     ORDER BY h.revisit_count ASC, RANDOM() LIMIT ?`,
+    [limit]
+  )
 }
