@@ -19,8 +19,10 @@ const FIELDS: { key: string; label: string; placeholder: string; password?: bool
     hint: 'OpenAI 兼容接口均可：GLM / DeepSeek / Moonshot / OpenAI…（以 /v1 结尾，不带 /chat/completions）'
   },
   { key: 'ai_api_key', label: 'API Key', placeholder: 'sk-…', password: true },
-  { key: 'ai_chat_model', label: '对话模型', placeholder: 'glm-4-flash' },
-  { key: 'ai_embed_model', label: '向量模型', placeholder: 'embedding-3', hint: 'M2 星穹图谱的语义聚类使用' }
+  { key: 'ai_chat_model', label: '对话模型', placeholder: 'glm-5.2' },
+  { key: 'ai_embed_model', label: '向量模型', placeholder: 'embedding-3', hint: 'M2 星穹图谱的语义聚类使用' },
+  { key: 'ai_embed_base_url', label: '向量 API 地址（可选）', placeholder: 'https://api.siliconflow.cn/v1', hint: '向量与对话分属不同平台时填写，留空沿用主配置' },
+  { key: 'ai_embed_key', label: '向量 API Key（可选）', placeholder: 'sk-…', password: true, hint: '例如 SiliconFlow 的 BAAI/bge-m3 免费向量' }
 ]
 
 export default function SettingsView() {

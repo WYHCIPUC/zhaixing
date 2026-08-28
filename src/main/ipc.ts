@@ -68,6 +68,18 @@ function aiConfigFromSettings(): AiConfig | null {
   return isAiConfigured(cfg) ? cfg : null
 }
 
+// 向量供应商可与对话分属不同平台（留空则沿用主配置）
+function embedConfigFromSettings(): AiConfig | null {
+  const s = getSettings(getDb())
+  const cfg: Partial<AiConfig> = {
+    baseUrl: (s.ai_embed_base_url || s.ai_base_url)?.trim(),
+    apiKey: (s.ai_embed_key || s.ai_api_key)?.trim(),
+    chatModel: s.ai_chat_model?.trim(),
+    embedModel: s.ai_embed_model?.trim()
+  }
+  return isAiConfigured(cfg) ? cfg : null
+}
+
 export function registerIpc(): void {
   // ---------- 导入 ----------
   ipcMain.handle('import:parse', (_e, text: string) => parseWereadText(text))
@@ -179,7 +191,9 @@ export function registerIpc(): void {
   ipcMain.handle('ai:askSky', async (_e, question: string) => {
     const cfg = aiConfigFromSettings()
     if (!cfg) throw new Error('未配置 AI')
-    return askSky(getDb(), cfg, question)
+    const embedCfg = embedConfigFromSettings()
+    if (!embedCfg) throw new Error('未配置向量模型接口')
+    return askSky(getDb(), cfg, embedCfg, question)
   })
   ipcMain.handle('ai:spirit', async (_e, refresh: boolean) => {
     const db = getDb()
@@ -215,7 +229,9 @@ export function registerIpc(): void {
   ipcMain.handle('ai:runAnalysis', async () => {
     const cfg = aiConfigFromSettings()
     if (!cfg) return { embedded: 0, nebulae: 0, nebulaStars: 0, twins: 0, collisions: 0, gems: 0, errors: ['未配置 AI'] }
-    return runAnalysis(cfg)
+    const embedCfg = embedConfigFromSettings()
+    if (!embedCfg) return { embedded: 0, nebulae: 0, nebulaStars: 0, twins: 0, collisions: 0, gems: 0, errors: ['未配置向量模型接口'] }
+    return runAnalysis(cfg, embedCfg)
   })
   ipcMain.handle('ai:pickGems', async () => {
     const cfg = aiConfigFromSettings()

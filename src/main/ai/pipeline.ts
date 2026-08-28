@@ -250,7 +250,8 @@ export async function pickGems(db: DB, cfg: AiConfig, report: AiRunReport): Prom
   }
 }
 
-export async function runAnalysis(cfg: AiConfig): Promise<AiRunReport> {
+// 对话与向量允许分属不同供应商（如 DeepSeek 对话 + SiliconFlow 向量）
+export async function runAnalysis(cfg: AiConfig, embedCfg: AiConfig): Promise<AiRunReport> {
   const db: DB = getDb()
   const report: AiRunReport = {
     embedded: 0,
@@ -261,7 +262,7 @@ export async function runAnalysis(cfg: AiConfig): Promise<AiRunReport> {
     gems: 0,
     errors: []
   }
-  await ensureEmbeddings(db, cfg, report)
+  await ensureEmbeddings(db, embedCfg, report)
   await buildAiNebulae(db, cfg, report)
   suggestTwins(db, report)
   await detectCollisions(db, cfg, report)

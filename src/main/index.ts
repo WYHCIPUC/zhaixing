@@ -5,7 +5,7 @@ app.setName('zhaixing')
 import path from 'node:path'
 import { backupDatabase, closeDb } from './db/connection'
 import { registerIpc } from './ipc'
-import { runHeadlessSync } from './headless'
+import { runHeadlessAi, runHeadlessSync } from './headless'
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -42,6 +42,11 @@ app.whenReady().then(() => {
   if (process.env.ZHAIXING_SYNC) {
     // 无界面批量同步模式：同步完自动退出
     void runHeadlessSync()
+    return
+  }
+  if (process.env.ZHAIXING_AI) {
+    // 无界面 AI 分析模式
+    void runHeadlessAi()
     return
   }
   createWindow()

@@ -97,8 +97,8 @@ export async function socraticQuestion(cfg: AiConfig, highlight: string, thought
 }
 
 // 与星空对话：embedding 检索读者自己的划线作答
-export async function askSky(db: DB, cfg: AiConfig, question: string): Promise<AskSkyResult> {
-  const [qvec] = await embed(cfg, [question.slice(0, 300)])
+export async function askSky(db: DB, cfg: AiConfig, embedCfg: AiConfig, question: string): Promise<AskSkyResult> {
+  const [qvec] = await embed(embedCfg, [question.slice(0, 300)])
   const embeddings = allEmbeddings(db)
   const scored: { id: number; sim: number }[] = []
   for (const [id, vec] of embeddings) {
