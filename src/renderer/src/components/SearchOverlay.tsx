@@ -61,26 +61,26 @@ export default function SearchOverlay({
           {hits.map((h) => (
             <button
               key={h.highlight_id}
-              className="block w-full rounded-lg px-4 py-3 text-left transition-colors hover:bg-[rgba(146,116,67,0.08)]"
+              className="tap block w-full rounded-lg px-4 py-3 text-left hover:bg-[rgba(146,116,67,0.08)]"
               onClick={() => {
                 onOpenBook(h.book_id)
                 onClose()
               }}
             >
-              <div className="serif line-clamp-2 text-[13px] leading-6">{h.snippet}</div>
-              <div className="mt-1 text-[11px] text-[var(--text-dim)]">
+              <div className="serif line-clamp-2 text-[14px] leading-6">{h.snippet}</div>
+              <div className="mt-1 text-[12px] text-[var(--text-dim)]">
                 《{h.book_title}》{h.chapter ? ` · ${h.chapter}` : ''}
               </div>
             </button>
           ))}
           {searched && hits.length === 0 && (
-            <div className="py-10 text-center text-[13px] text-[var(--text-dim)]">夜空中没有匹配的星</div>
+            <div className="py-10 text-center text-[14px] text-[var(--text-dim)]">夜空中没有匹配的星</div>
           )}
           {!searched && (
             <div className="py-10 text-center text-[12px] text-[var(--text-dim)]">输入关键词，按书与想法全文检索</div>
           )}
         </div>
-        <div className="border-t border-[var(--line)] px-5 py-2 text-[11px] text-[var(--text-dim)]">
+        <div className="border-t border-[var(--line)] px-5 py-2 text-[12px] text-[var(--text-dim)]">
           Ctrl+K 呼出 · Esc 关闭 · 点击结果进入所属书
         </div>
       </div>

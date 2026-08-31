@@ -88,11 +88,11 @@ export default function SyncDialog({
         </header>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          {loading && <div className="py-16 text-center text-[13px] text-[var(--text-dim)]">正在拉取笔记本概览…</div>}
+          {loading && <div className="py-16 text-center text-[14px] text-[var(--text-dim)]">正在拉取笔记本概览…</div>}
           {error && (
-            <div className="rounded-lg border border-red-400/50 bg-red-400/15 px-4 py-3 text-[12.5px] leading-6 text-red-600">
+            <div className="rounded-lg border border-red-400/50 bg-red-400/15 px-4 py-3 text-[12px] leading-6 text-red-600">
               {error}
-              <div className="mt-1 text-[11.5px] opacity-80">请到 设置 → 微信读书同步 填入 API Key（wrk-…）</div>
+              <div className="mt-1 text-[12px] opacity-80">请到 设置 → 微信读书同步 填入 API Key（wrk-…）</div>
             </div>
           )}
           {!loading && !error && (
@@ -105,13 +105,13 @@ export default function SyncDialog({
                     className="flex items-center gap-3 rounded-lg border border-[var(--line)] px-4 py-2.5"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-[13px]">{b.title}</div>
-                      <div className="text-[11px] text-[var(--text-dim)]">
+                      <div className="truncate text-[14px]">{b.title}</div>
+                      <div className="text-[12px] text-[var(--text-dim)]">
                         {b.author || '未知作者'} · ✦{b.noteCount} 划线 · ❝{b.reviewCount} 想法
                         {b.bookmarkCount > 0 ? ` · 书签 ${b.bookmarkCount}（暂不可导出）` : ''}
                       </div>
                       {st.message && (
-                        <div className={`mt-0.5 text-[11px] ${st.status === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>
+                        <div className={`mt-0.5 text-[12px] ${st.status === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>
                           {st.message}
                         </div>
                       )}
@@ -132,7 +132,7 @@ export default function SyncDialog({
 
         {!loading && !error && books.length > 0 && (
           <footer className="flex items-center justify-between border-t border-[var(--line)] px-6 py-3">
-            <span className="text-[11px] text-[var(--text-dim)]">
+            <span className="text-[12px] text-[var(--text-dim)]">
               划线含真实创建时间；想法按「原文锚点」自动挂到对应星上；重复同步自动去重
             </span>
             <button className="btn btn-primary py-1.5" onClick={() => void syncAll()}>

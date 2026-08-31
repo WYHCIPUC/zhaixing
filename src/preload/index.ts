@@ -44,7 +44,16 @@ const api = {
   bumpRevisit: (starId: number) => ipcRenderer.invoke('stars:bumpRevisit', starId),
   topRevisited: (limit: number) => ipcRenderer.invoke('stars:topRevisited', limit),
   runAiAnalysis: () => ipcRenderer.invoke('ai:runAnalysis'),
+  classifyBooks: () => ipcRenderer.invoke('ai:classifyBooks'),
   pickGems: () => ipcRenderer.invoke('ai:pickGems'),
+
+  wikiCompile: () => ipcRenderer.invoke('wiki:compile'),
+  wikiList: () => ipcRenderer.invoke('wiki:list'),
+  wikiGet: (id: number) => ipcRenderer.invoke('wiki:get', id),
+  wikiGetByTitle: (title: string) => ipcRenderer.invoke('wiki:getByTitle', title),
+  wikiExport: () => ipcRenderer.invoke('wiki:export'),
+  wikiSetAutoExport: (on: boolean) => ipcRenderer.invoke('wiki:setAutoExport', on),
+  wikiGetAutoExport: () => ipcRenderer.invoke('wiki:getAutoExport'),
 
   getMeteor: () => ipcRenderer.invoke('meteor:today'),
   markMeteorRevisited: (logId: number) => ipcRenderer.invoke('meteor:revisited', logId),

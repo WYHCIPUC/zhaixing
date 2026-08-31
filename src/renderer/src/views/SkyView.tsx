@@ -12,7 +12,7 @@ import { DUR, EASE_OUT } from '../motion'
 // 推窗转场（v5 §0.5-③）：会话内首次进星穹 = 完整开窗 ≈650ms，之后 250ms 短亮起
 let windowOpenedThisSession = false
 
-export default function SkyView() {
+export default function SkyView({ onOpenWiki }: { onOpenWiki?: (t: { title?: string; type?: string; refId?: number }) => void }) {
   const canvasHost = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<StarfieldEngine | null>(null)
@@ -27,6 +27,8 @@ export default function SkyView() {
   const [selectMode, setSelectMode] = useState(false)
   const [multiSel, setMultiSel] = useState<number[]>([])
   const [activeNebula, setActiveNebula] = useState<NebulaRecord | null>(null)
+  // 层级导航面包屑：银河 › 星云 › 书系（v6 B3）
+  const [trail, setTrail] = useState<{ nebula?: NebulaRecord; book?: { id: number; title: string } }>({})
 
   const reload = useCallback(async (): Promise<void> => {
     const d = await window.api.getStarMap()
@@ -40,7 +42,10 @@ export default function SkyView() {
     if (!canvasRef.current || !canvasHost.current) return
     const engine = new StarfieldEngine(canvasRef.current, {
       onHover: (star, x, y) => setHover(star ? { star, x, y } : null),
-      onSelect: (star) => setSelected(star),
+      onSelect: (star) => {
+        setSelected(star)
+        if (star) setTrail((t) => ({ ...t, book: { id: star.book_id, title: star.book_title } }))
+      },
       onMultiSelect: (ids) => setMultiSel([...ids])
     })
     engineRef.current = engine
@@ -120,7 +125,7 @@ export default function SkyView() {
         />
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {aiMsg && (
-            <span className="max-w-[420px] truncate text-[11.5px] text-[var(--text-dim)]" title={aiMsg}>
+            <span className="max-w-[420px] truncate text-[12px] text-[var(--text-dim)]" title={aiMsg}>
               {aiMsg}
             </span>
           )}
@@ -164,9 +169,11 @@ export default function SkyView() {
             <button
               key={n.id}
               onClick={() => {
-                  setActiveNebula(n)
+                setActiveNebula(n)
+                engineRef.current?.focusNebula(n.id)
+                setTrail((t) => ({ ...t, nebula: n, book: undefined }))
               }}
-              className="rounded-full border border-[var(--line)] px-3 py-0.5 text-[11.5px] text-[var(--text-dim)] transition-colors hover:border-[rgba(221,91,0,0.5)] hover:text-[var(--text)]"
+              className="rounded-full border border-[var(--line)] px-3 py-1 text-[14px] text-[var(--text-dim)] tap hover:border-[rgba(221,91,0,0.5)] hover:text-[var(--text)]"
               title={`${n.summary}\n（${n.source === 'ai' ? 'AI 聚类' : '自造'} · ${n.star_count ?? 0} 颗星）`}
             >
               {n.source === 'ai' ? '☁' : '⭘'} {n.name} <span className="opacity-60">{n.star_count}</span>
@@ -177,6 +184,41 @@ export default function SkyView() {
 
       {/* 星野 —— 窗框恒在，开窗＝亮度升起，不是页面跳转 */}
       <div ref={canvasHost} className="relative min-h-0 flex-1 overflow-hidden m-3 rounded-2xl border border-white/10 shadow-[0_24px_80px_rgba(10,16,40,0.35),inset_0_0_120px_rgba(5,8,20,0.6)]">
+        {/* 层级面包屑：银河 › 星云 › 书系 */}
+        <div className="absolute left-3 top-3 z-20 flex items-center gap-1 text-[12px]">
+          <button
+            className="tap rounded-full border border-white/15 bg-[#0e1428cc] px-2.5 py-0.5 text-[#cdd8ee] hover:border-white/30"
+            onClick={() => {
+              engineRef.current?.focusHome()
+              setTrail({})
+            }}
+          >
+            银河
+          </button>
+          {trail.nebula && (
+            <>
+              <span className="text-[#8fa3c8]">›</span>
+              <button
+                className="tap rounded-full border border-white/15 bg-[#0e1428cc] px-2.5 py-0.5 text-[#cdd8ee] hover:border-white/30"
+                onClick={() => {
+                  engineRef.current?.focusNebula(trail.nebula!.id)
+                  setTrail((t) => ({ ...t, book: undefined }))
+                }}
+              >
+                {trail.nebula.name}
+              </button>
+            </>
+          )}
+          {trail.book && (
+            <>
+              <span className="text-[#8fa3c8]">›</span>
+              <span className="rounded-full border border-white/25 bg-[#0e1428cc] px-2.5 py-0.5 text-[#e6edf8]">
+                《{trail.book.title}》
+              </span>
+            </>
+          )}
+        </div>
+
         <motion.div
           className="absolute inset-0"
           initial={{ opacity: 0, filter: 'brightness(0.55)' }}
@@ -206,7 +248,7 @@ export default function SkyView() {
               style={{ left: Math.min(hover.x + 14, (canvasHost.current?.clientWidth ?? 800) - 340), top: hover.y + 14 }}
             >
               <div className="serif line-clamp-3 text-[12px] leading-6 text-[#dfe7f5]">{hover.star.content}</div>
-              <div className="mt-1 text-[11px] text-[#8fa3c8]">
+              <div className="mt-1 text-[12px] text-[#8fa3c8]">
                 《{hover.star.book_title}》{hover.star.chapter ? ` · ${hover.star.chapter}` : ''}
                 {hover.star.is_gem ? ' · ★镇星之宝' : ''}
               </div>
@@ -250,7 +292,20 @@ export default function SkyView() {
         </AnimatePresence>
       </div>
 
-      {/* 星卡抽屉 */}
+      {/* 星卡抽屉（遮罩：点击空白处关闭） */}
+      <AnimatePresence>
+        {selected && (
+          <motion.div
+            key="star-scrim"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: DUR.fast, ease: EASE_OUT } }}
+            transition={{ duration: DUR.base, ease: EASE_OUT }}
+            className="absolute inset-0 z-[55] bg-[#04091778]"
+            onClick={() => setSelected(null)}
+          />
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {selected && (
           <StarDrawer
@@ -258,10 +313,17 @@ export default function SkyView() {
             nebulae={data?.nebulae ?? []}
             links={data?.links.filter((l) => l.from_highlight === selected.id || l.to_highlight === selected.id) ?? []}
             onClose={() => setSelected(null)}
+            onOpenWiki={onOpenWiki}
             onChanged={() => {
               void reload()
             }}
             onJump={openStar}
+            onFocusSystem={() => {
+              if (selected) {
+                engineRef.current?.focusSystem(selected.book_id)
+                setTrail((t) => ({ ...t, book: { id: selected.book_id, title: selected.book_title } }))
+              }
+            }}
           />
         )}
       </AnimatePresence>
@@ -280,11 +342,24 @@ export default function SkyView() {
               openStar(id)
               setActiveNebula(null)
             }}
+            onFocusNebula={() => {
+              engineRef.current?.focusNebula(activeNebula.id)
+              setTrail((t) => ({ ...t, nebula: activeNebula, book: undefined }))
+            }}
           />
         )}
       </AnimatePresence>
 
-      {/* 连线审核 */}
+      {/* 连线审核（遮罩） */}
+      {reviewOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: DUR.base, ease: EASE_OUT }}
+          className="absolute inset-0 z-[65] bg-[#04091778]"
+          onClick={() => setReviewOpen(false)}
+        />
+      )}
       {reviewOpen && (
         <LinkReview
           onClose={() => setReviewOpen(false)}

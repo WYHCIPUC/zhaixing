@@ -17,7 +17,9 @@ export default function StarDrawer({
   links,
   onClose,
   onChanged,
-  onJump
+  onJump,
+  onFocusSystem,
+  onOpenWiki
 }: {
   star: StarMapStar
   nebulae: NebulaRecord[]
@@ -25,6 +27,8 @@ export default function StarDrawer({
   onClose: () => void
   onChanged: () => void
   onJump: (starId: number) => void
+  onFocusSystem?: () => void
+  onOpenWiki?: (t: { title?: string; type?: string; refId?: number }) => void
 }) {
   const [tagInput, setTagInput] = useState('')
   const [capsuleDate, setCapsuleDate] = useState('')
@@ -91,7 +95,7 @@ export default function StarDrawer({
         style={{ touchAction: 'none' }}
         onPointerDown={(e) => dragControls.start(e)}
       >
-        <div className="text-[13px] text-[var(--text-dim)]">
+        <div className="text-[14px] text-[var(--text-dim)]">
           《{star.book_title}》{star.chapter ? ` · ${star.chapter}` : ''}
         </div>
         <button className="btn btn-sm px-2" onClick={onClose}>
@@ -109,9 +113,9 @@ export default function StarDrawer({
       >
         <div className="serif text-[14px] leading-8">{star.content}</div>
 
-        <div className="mt-3 flex items-center gap-3 text-[11.5px] text-[var(--text-dim)]">
+        <div className="mt-3 flex items-center gap-3 text-[12px] text-[var(--text-dim)]">
           <button
-            className={`text-[15px] ${star.favorite ? 'star-mark' : 'opacity-40 hover:opacity-80'}`}
+            className={`tap text-[15px] ${star.favorite ? 'star-mark' : 'opacity-40 hover:opacity-80'}`}
             onClick={async () => {
               await window.api.updateStar(star.id, { favorite: !star.favorite })
               onChanged()
@@ -120,6 +124,23 @@ export default function StarDrawer({
             {star.favorite ? '★' : '☆'}
           </button>
           {star.is_gem && <span className="star-mark">★ 镇星之宝</span>}
+          {onOpenWiki && (
+          <button
+            className="btn px-2 py-0.5 text-[11.5px]"
+            title="在群星（知识库）中查看本书页面"
+            onClick={() => onOpenWiki({ type: 'book', refId: star.book_id })}
+          >
+            群星 ↗
+          </button>
+        )}
+        {onFocusSystem && (
+            <button
+              className="tap rounded border border-[var(--line)] px-1.5 text-[12px] text-[var(--text-dim)] hover:border-[var(--line-strong)] hover:text-[var(--text)]"
+              onClick={onFocusSystem}
+            >
+              ☀ 前往恒星系
+            </button>
+          )}
           <span>重访 {star.revisit_count}</span>
           <span>{star.created_at.slice(0, 10)}</span>
         </div>
@@ -127,7 +148,7 @@ export default function StarDrawer({
         {/* 语境：回忆当时的阅读现场 */}
         {ctx && (
           <div className="mt-4 rounded-lg border border-[var(--line)] bg-[var(--surface-2)] px-3 py-2.5">
-            <div className="mb-1.5 text-[11px] tracking-wide text-[var(--text-dim)]">当时的语境</div>
+            <div className="mb-1.5 text-[12px] tracking-wide text-[var(--text-dim)]">当时的语境</div>
             <div className="text-[12px] leading-6">
               {star.chapter && <span className="text-[var(--text)]">{star.chapter}</span>}
               {ctx.chapter_total ? (
@@ -142,16 +163,16 @@ export default function StarDrawer({
             )}
             {ctx.siblings.length > 0 && (
               <div className="mt-2.5">
-                <div className="text-[11px] text-[var(--text-dim)]">同章你还摘了 {ctx.siblings.length} 条</div>
+                <div className="text-[12px] text-[var(--text-dim)]">同章你还摘了 {ctx.siblings.length} 条</div>
                 {ctx.siblings.slice(0, 3).map((sib) => (
-                  <div key={sib.id} className="mt-1 line-clamp-1 text-[11.5px] text-[var(--text-secondary,5d5b54)] opacity-80">
+                  <div key={sib.id} className="mt-1 line-clamp-1 text-[12px] text-[var(--text-secondary,5d5b54)] opacity-80">
                     · {sib.content}
                   </div>
                 ))}
               </div>
             )}
             {ctx.peers.length > 0 && (
-              <div className="mt-1.5 text-[11px] text-[var(--text-dim)]">前后一周内你还拾了 {ctx.peers.length} 颗星</div>
+              <div className="mt-1.5 text-[12px] text-[var(--text-dim)]">前后一周内你还拾了 {ctx.peers.length} 颗星</div>
             )}
           </div>
         )}
@@ -162,7 +183,7 @@ export default function StarDrawer({
         </h3>
         <div className="mt-2 space-y-2 border-l border-dashed border-[rgba(251,191,36,0.35)] pl-4">
           {(star.thoughts ?? []).map((t) => (
-              <div key={t.id} className="text-[12.5px] italic leading-6 text-[var(--text-dim)]">
+              <div key={t.id} className="text-[12px] italic leading-6 text-[var(--text-dim)]">
                 <span className="serif">{t.content}</span>
                 <span className="ml-2 not-italic opacity-60">{(t.thought_date || t.created_at).slice(0, 10)}</span>
               </div>
@@ -170,7 +191,7 @@ export default function StarDrawer({
           {(star.thoughts?.length ?? 0) === 0 && <div className="text-[12px] opacity-50">还没有想法</div>}
         </div>
         <input
-          className="input mt-2 py-1 text-[12.5px]"
+          className="input mt-2 py-1 text-[12px]"
           placeholder="在这颗星上落一笔…"
           value={thoughtDraft}
           onChange={(e) => setThoughtDraft(e.target.value)}
@@ -193,7 +214,7 @@ export default function StarDrawer({
         {socratic && (
           <div className="mt-2 rounded-lg border border-[rgba(221,91,0,0.35)] bg-[rgba(221,91,0,0.08)] px-3 py-2 text-[12px] italic text-[var(--accent)]">
             苏格拉底问：{socratic}
-            <button className="ml-2 not-italic opacity-60 hover:opacity-100" onClick={() => setSocratic('')}>
+            <button className="tap ml-2 not-italic opacity-60 hover:opacity-100" onClick={() => setSocratic('')}>
               ×
             </button>
           </div>
@@ -230,10 +251,10 @@ export default function StarDrawer({
           ))}
         </div>
         {rewriteText && (
-          <div className="mt-2 rounded-lg border border-[var(--line)] bg-[#f6f5f4] px-3 py-2 text-[12.5px] leading-6">
+          <div className="mt-2 rounded-lg border border-[var(--line)] bg-[#f6f5f4] px-3 py-2 text-[12px] leading-6">
             <span className="serif">{rewriteText}</span>
             <button
-              className="ml-2 text-[11px] text-[var(--accent)]"
+              className="ml-2 text-[12px] text-[var(--accent)]"
               onClick={() => {
                 void navigator.clipboard.writeText(rewriteText)
                 toast.success('已复制到剪贴板')
@@ -278,12 +299,12 @@ export default function StarDrawer({
           {nebulae
             .filter((n) => star.nebula_ids.includes(n.id))
             .map((n) => (
-              <span key={n.id} className="rounded-full border border-[var(--line)] px-2 py-0.5 text-[11px]">
+              <span key={n.id} className="rounded-full border border-[var(--line)] px-2 py-0.5 text-[12px]">
                 {n.source === 'ai' ? '☁' : '⭘'} {n.name}
               </span>
             ))}
           <select
-            className="rounded-full border border-[var(--line)] bg-transparent px-2 py-0.5 text-[11px] text-[var(--text-dim)]"
+            className="rounded-full border border-[var(--line)] bg-transparent px-2 py-0.5 text-[12px] text-[var(--text-dim)]"
             value=""
             onChange={(e) => {
               const id = Number(e.target.value)
@@ -314,15 +335,15 @@ export default function StarDrawer({
               return (
                 <button
                   key={l.id}
-                  className="block w-full rounded-lg border border-[var(--line)] px-3 py-2 text-left transition-colors hover:border-[rgba(221,91,0,0.4)]"
+                  className="block w-full rounded-lg border border-[var(--line)] px-3 py-2 text-left tap hover:border-[rgba(221,91,0,0.4)]"
                   onClick={() => onJump(o.id)}
                 >
-                  <div className="text-[11px] text-[var(--accent)]">
+                  <div className="text-[12px] text-[var(--accent)]">
                     {meta.icon} {meta.label}
                     {l.kind === 'collision' && l.note ? ` · ${l.note}` : ''}
                   </div>
                   <div className="serif mt-0.5 line-clamp-2 text-[12px] leading-6">{o.content}</div>
-                  <div className="mt-0.5 text-[11px] text-[var(--text-dim)]">《{o.book}》</div>
+                  <div className="mt-0.5 text-[12px] text-[var(--text-dim)]">《{o.book}》</div>
                 </button>
               )
             })}
@@ -335,7 +356,7 @@ export default function StarDrawer({
         <h3 className="mt-5 text-[12px] tracking-wide text-[var(--text-dim)]">连线到另一颗星</h3>
         <div className="mt-2 flex gap-2">
           <input
-            className="input py-1 text-[12.5px]"
+            className="input py-1 text-[12px]"
             placeholder="搜索另一条划线…"
             value={linkTarget}
             onChange={(e) => setLinkTarget(e.target.value)}
@@ -346,7 +367,7 @@ export default function StarDrawer({
           </button>
         </div>
         <input
-          className="input mt-2 py-1 text-[12.5px]"
+          className="input mt-2 py-1 text-[12px]"
           placeholder="为什么连？（可留空）"
           value={linkNote}
           onChange={(e) => setLinkNote(e.target.value)}
@@ -360,10 +381,10 @@ export default function StarDrawer({
                 onClick={() => void doLink(h.highlight_id)}
               >
                 <span className="serif line-clamp-1">{h.snippet}</span>
-                <span className="text-[11px] text-[var(--text-dim)]">《{h.book_title}》· 点击连线</span>
+                <span className="text-[12px] text-[var(--text-dim)]">《{h.book_title}》· 点击连线</span>
               </button>
             ))}
-            {linkSearch.length === 0 && <div className="text-[11.5px] opacity-50">没有匹配的星</div>}
+            {linkSearch.length === 0 && <div className="text-[12px] opacity-50">没有匹配的星</div>}
           </div>
         )}
 
@@ -371,12 +392,12 @@ export default function StarDrawer({
         <h3 className="mt-5 text-[12px] tracking-wide text-[var(--text-dim)]">标签</h3>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {(star.tags ?? []).map((t) => (
-            <span key={t} className="rounded-full border border-[var(--line)] px-2 py-0.5 text-[11px]">
+            <span key={t} className="rounded-full border border-[var(--line)] px-2 py-0.5 text-[12px]">
               #{t}
             </span>
           ))}
           <input
-            className="input w-24 py-0.5 text-[11px]"
+            className="input w-24 py-0.5 text-[12px]"
             placeholder="＋标签"
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value)}

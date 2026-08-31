@@ -51,7 +51,7 @@ export default function LinkReview({
 
       <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
         {links.length === 0 && (
-          <div className="mt-16 text-center text-[13px] text-[var(--text-dim)]">
+          <div className="mt-16 text-center text-[14px] text-[var(--text-dim)]">
             没有待审核的连线。
             <br />
             导入更多书的笔记并运行「AI 分析」后，跨书的双星与对撞会出现在这里。
@@ -61,7 +61,7 @@ export default function LinkReview({
           const m = meta(l.kind)
           return (
             <div key={l.id} className="panel p-4">
-              <div className="flex items-center gap-2 text-[11.5px]">
+              <div className="flex items-center gap-2 text-[12px]">
                 <span className={l.kind === 'collision' ? 'text-red-600' : 'text-[var(--accent)]'}>
                   {m.icon} {m.label}
                 </span>
@@ -76,14 +76,14 @@ export default function LinkReview({
                     onClose()
                   }}
                 >
-                  <div className="text-[11px] text-[var(--text-dim)]">{i === 0 ? l.from_book : l.to_book}</div>
-                  <div className="serif line-clamp-3 text-[12.5px] leading-6">
+                  <div className="text-[12px] text-[var(--text-dim)]">{i === 0 ? l.from_book : l.to_book}</div>
+                  <div className="serif line-clamp-3 text-[12px] leading-6">
                     {i === 0 ? l.from_content : l.to_content}
                   </div>
                 </button>
               ))}
               {l.note && (
-                <div className={`mt-2 rounded-md px-2 py-1 text-[11.5px] ${l.kind === 'collision' ? 'bg-red-400/15 text-red-700' : 'bg-[rgba(146,116,67,0.08)] text-[var(--text-dim)]'}`}>
+                <div className={`mt-2 rounded-md px-2 py-1 text-[12px] ${l.kind === 'collision' ? 'bg-red-400/15 text-red-700' : 'bg-[rgba(146,116,67,0.08)] text-[var(--text-dim)]'}`}>
                   {l.note}
                 </div>
               )}

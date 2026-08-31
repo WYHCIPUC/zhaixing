@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { applySchema } from './apply-schema'
+import { SCHEMA_VERSION } from './schema'
 import { createTestExecutor } from './test-executor'
 import { cjkSplit } from './fts'
 
@@ -29,7 +30,7 @@ describe('applySchema', () => {
     )).map((r) => r.name)
     for (const t of EXPECTED_TABLES) expect(tables).toContain(t)
     const uv = await db.query<{ user_version: number }>('PRAGMA user_version')
-    expect(uv[0].user_version).toBe(2)
+    expect(uv[0].user_version).toBe(SCHEMA_VERSION)
   })
 
   it('重复调用幂等', async () => {

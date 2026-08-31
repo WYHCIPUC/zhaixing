@@ -28,7 +28,7 @@ export function MobileTopBar({ onSearch }: { onSearch: () => void }): React.JSX.
           摘星<span className="text-[var(--text-dim)]">实录</span>
         </span>
         {stats && (
-          <span className="text-[11px] text-[var(--text-dim)]">
+          <span className="text-[12px] text-[var(--text-dim)]">
             书 {stats.bookCount} · 星 {stats.highlightCount}
           </span>
         )}
@@ -60,7 +60,7 @@ export function MobileBottomNav({
           <button
             key={n.key}
             onClick={() => onNavigate(n.key)}
-            className={`relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] transition-colors ${
+            className={`relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[12px] tap ${
               active ? 'text-[var(--accent)]' : 'text-[var(--text-dim)]'
             }`}
           >

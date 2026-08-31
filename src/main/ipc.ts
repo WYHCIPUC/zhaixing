@@ -30,7 +30,7 @@ import {
 import { parseWereadText } from '@shared/parser/weread'
 import { buildExports } from './exporters/markdown'
 import { isAiConfigured, testAi, type AiConfig } from '@shared/ai/client'
-import { pickGems, runAnalysis } from './ai/pipeline'
+import { classifyBooks, pickGems, runAnalysis } from './ai/pipeline'
 import { createCapsule, getMeteor, listCapsules, markMeteorRevisited, nightFlightStars } from './db/meteor'
 import {
   deleteArticle,
@@ -41,6 +41,8 @@ import {
 import { askSky, draftNebulaArticle, rewriteQuote, socraticQuestion, type RewriteStyle } from './ai/weave'
 import { spiritSpectrum } from './ai/spirit'
 import { listNotebooks, syncBook, wereadKey } from './sync/weread'
+import { compileWiki, getWikiBacklinks, getWikiPage, getWikiPageByTitle, listWikiPages } from './wiki/compiler'
+import { exportWiki } from './wiki/exporter'
 import {
   addStarsToNebula,
   bumpRevisit,
@@ -235,6 +237,11 @@ export function registerIpc(): void {
     if (!embedCfg) return { embedded: 0, nebulae: 0, nebulaStars: 0, twins: 0, collisions: 0, gems: 0, errors: ['未配置向量模型接口'] }
     return runAnalysis(cfg, embedCfg)
   })
+  ipcMain.handle('ai:classifyBooks', async () => {
+    const cfg = aiConfigFromSettings()
+    if (!cfg) throw new Error('未配置 AI')
+    return classifyBooks(getDb(), cfg)
+  })
   ipcMain.handle('ai:pickGems', async () => {
     const cfg = aiConfigFromSettings()
     if (!cfg) return 0
@@ -269,6 +276,59 @@ export function registerIpc(): void {
     return dir
   })
 
+  // ---------- 群星（wiki） ----------
+  ipcMain.handle('wiki:compile', () => compileWiki(getDb()))
+  ipcMain.handle('wiki:list', () => listWikiPages(getDb()))
+  ipcMain.handle('wiki:get', (_e, id: number) => {
+    const p = getWikiPage(getDb(), id)
+    if (!p) return null
+    return {
+      id: p.id,
+      page_type: p.page_type,
+      ref_id: p.ref_id,
+      title: p.title,
+      compiled_at: p.compiled_at,
+      body_md: p.body_md,
+      links: JSON.parse(p.links || '[]'),
+      backlinks: getWikiBacklinks(getDb(), p.title)
+    }
+  })
+  ipcMain.handle('wiki:getByTitle', (_e, title: string) => {
+    const p = getWikiPageByTitle(getDb(), title)
+    if (!p) return null
+    return {
+      id: p.id,
+      page_type: p.page_type,
+      ref_id: p.ref_id,
+      title: p.title,
+      compiled_at: p.compiled_at,
+      body_md: p.body_md,
+      links: JSON.parse(p.links || '[]'),
+      backlinks: getWikiBacklinks(getDb(), p.title)
+    }
+  })
+  ipcMain.handle('wiki:export', async () => {
+    const db = getDb()
+    compileWiki(db)
+    const s = getSettings(db)
+    let dir = s.wiki_export_dir?.trim()
+    if (!dir) {
+      const win = BrowserWindow.getFocusedWindow()
+      const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
+        properties: ['openDirectory', 'createDirectory'],
+        title: '选择群星导出目录（可设为 llm_wiki 的来源监视目录）'
+      })
+      if (canceled || filePaths.length === 0) return { dir: '', files: 0, failed: [] }
+      dir = filePaths[0]
+      setSettings(db, { wiki_export_dir: dir })
+    }
+    return exportWiki(db, dir)
+  })
+  ipcMain.handle('wiki:setAutoExport', (_e, on: boolean) =>
+    setSettings(getDb(), { wiki_auto_export: on ? '1' : '0' })
+  )
+  ipcMain.handle('wiki:getAutoExport', () => getSettings(getDb()).wiki_auto_export === '1')
+
   // ---------- 微信读书同步 ----------
   ipcMain.handle('weread:notebooks', async () => {
     const key = wereadKey()
@@ -289,7 +349,18 @@ export function registerIpc(): void {
   ipcMain.handle('weread:syncBook', async (_e, bookId: string, meta?: { progress?: number | null; status?: string | null }) => {
     const key = wereadKey()
     if (!key) throw new Error('未配置微信读书 API Key（设置 → 微信读书同步）')
-    return syncBook(getDb(), key, bookId, meta)
+    const report = await syncBook(getDb(), key, bookId, meta)
+    if (getSettings(getDb()).wiki_auto_export === '1') {
+      try {
+        const db = getDb()
+        compileWiki(db)
+        const dir = getSettings(db).wiki_export_dir?.trim()
+        if (dir) exportWiki(db, dir)
+      } catch {
+        /* 自动导出失败不阻塞同步 */
+      }
+    }
+    return report
   })
 
   // ---------- 设置 / AI ----------

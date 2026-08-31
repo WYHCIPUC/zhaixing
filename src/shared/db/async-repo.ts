@@ -408,7 +408,12 @@ export async function overview(db: Db): Promise<OverviewStats> {
     highlightCount: await count(`SELECT COUNT(*) AS n FROM highlights`),
     thoughtCount: await count(`SELECT COUNT(*) AS n FROM thoughts`),
     tagCount: await count(`SELECT COUNT(*) AS n FROM tags`),
-    archiveCount: await count(`SELECT COUNT(*) AS n FROM import_archives`)
+    archiveCount: await count(`SELECT COUNT(*) AS n FROM import_archives`),
+    readingCount: await count(`SELECT COUNT(*) AS n FROM books WHERE status = 'reading'`),
+    finishedCount: await count(`SELECT COUNT(*) AS n FROM books WHERE status = 'finished'`),
+    weeklyStars: await count(
+      `SELECT COUNT(*) AS n FROM highlights WHERE created_at >= datetime('now', 'localtime', '-7 days')`
+    )
   }
 }
 

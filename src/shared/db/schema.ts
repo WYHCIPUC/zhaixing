@@ -1,6 +1,6 @@
 // 双端共享的 SQLite schema（桌面 connection.ts / 手机 applySchema 共用）
 // SCHEMA_VERSION 对应 PRAGMA user_version；结构变更必须递增并同步两端的迁移逻辑
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 4
 
 export const SCHEMA = `
 CREATE TABLE IF NOT EXISTS books (
@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS books (
   rating INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'finished' CHECK (status IN ('reading','finished','wishlist')),
   short_review TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT '',
   gem_highlight_id INTEGER,
   chapter_count INTEGER,
   reading_progress REAL,
@@ -128,6 +129,19 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL DEFAULT ''
 );
+
+CREATE TABLE IF NOT EXISTS wiki_pages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_type TEXT NOT NULL CHECK (page_type IN ('book','concept','comparison','synthesis')),
+  ref_id INTEGER,
+  title TEXT NOT NULL,
+  body_md TEXT NOT NULL,
+  links TEXT NOT NULL DEFAULT '[]',
+  content_hash TEXT NOT NULL,
+  compiled_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  UNIQUE(page_type, ref_id)
+);
+CREATE INDEX IF NOT EXISTS idx_wiki_title ON wiki_pages(title);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS highlights_fts USING fts5(
   text,

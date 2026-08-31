@@ -62,7 +62,7 @@ export default function StatsView() {
       <header className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="t-display">统计</h1>
-          <p className="mt-0.5 text-[12.5px] text-[var(--text-dim)]">你的星空，长成了什么形状</p>
+          <p className="mt-0.5 text-[12px] text-[var(--text-dim)]">你的星空，长成了什么形状</p>
         </div>
         <button className="btn btn-primary" disabled={!overview || overview.highlightCount === 0} onClick={() => setReplayOpen(true)}>
           ▶ 年度星空回放
@@ -90,7 +90,7 @@ export default function StatsView() {
             <div className="text-[24px] font-semibold text-[var(--text)]">
               {value === undefined ? '–' : <CountUp value={value} />}
             </div>
-            <div className="text-[11px] text-[var(--text-dim)]">{label}</div>
+            <div className="text-[12px] text-[var(--text-dim)]">{label}</div>
           </motion.div>
         ))}
       </div>
@@ -98,13 +98,13 @@ export default function StatsView() {
       <div className="mt-5 grid grid-cols-[1.4fr_1fr] gap-5">
         {/* 热力图 */}
         <section className="panel p-5">
-          <h2 className="mb-3 text-[13px] font-medium">摘星热力</h2>
+          <h2 className="mb-3 text-[14px] font-medium">摘星热力</h2>
           <HeatMap daily={daily} />
         </section>
 
         {/* 主题分布 */}
         <section className="panel p-5">
-          <h2 className="mb-3 text-[13px] font-medium">星云主题分布</h2>
+          <h2 className="mb-3 text-[14px] font-medium">星云主题分布</h2>
           {themes.length === 0 && <div className="text-[12px] text-[var(--text-dim)] opacity-70">还没有星云（星穹 → AI 分析）</div>}
           <div className="space-y-2">
             {themes.map((t) => (
@@ -129,7 +129,7 @@ export default function StatsView() {
       {/* 精神光谱 */}
       <section className="panel mt-5 p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-[13px] font-medium">✧ 精神光谱</h2>
+          <h2 className="text-[14px] font-medium">✧ 精神光谱</h2>
           <button className="btn btn-sm" disabled={spiritBusy} onClick={() => void runSpirit(spirit !== null)}>
             {spiritBusy ? '分析中…' : spirit ? '重新分析' : 'AI 分析我的阅读画像'}
           </button>
@@ -139,10 +139,10 @@ export default function StatsView() {
             <Radar spectrum={spirit.spectrum} />
             <div>
               <div className="text-[20px] font-semibold text-[var(--gold)]">{spirit.type_name}</div>
-              <div className="serif mt-2 max-w-[380px] text-[13px] italic leading-7 text-[var(--text-dim)]">
+              <div className="serif mt-2 max-w-[380px] text-[14px] italic leading-7 text-[var(--text-dim)]">
                 {spirit.type_desc}
               </div>
-              <div className="mt-2 text-[11px] opacity-50">生成于 {spirit.generated_at}</div>
+              <div className="mt-2 text-[12px] opacity-50">生成于 {spirit.generated_at}</div>
             </div>
           </div>
         ) : (

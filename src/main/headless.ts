@@ -4,6 +4,8 @@ import { getDb } from './db/connection'
 import { listNotebooks, syncBook, wereadKey } from './sync/weread'
 import { getSettings } from './db/repo'
 import { runAnalysis } from './ai/pipeline'
+import { compileWiki } from './wiki/compiler'
+import { exportWiki } from './wiki/exporter'
 import { isAiConfigured, type AiConfig } from '@shared/ai/client'
 
 function aiConfig(): AiConfig | null {
@@ -106,6 +108,26 @@ export async function runHeadlessSync(): Promise<void> {
     app.exit(0)
   } catch (err) {
     console.error('[sync] 终止：', err instanceof Error ? err.message : String(err))
+    closeDb()
+    app.exit(1)
+  }
+}
+
+// 无界面群星编译：ZHAIXING_WIKI=1 npx electron .
+export async function runHeadlessWiki(): Promise<void> {
+  try {
+    const r = compileWiki(getDb())
+    console.log(`[wiki] 完成：来源 ${r.books} · 概念 ${r.concepts} · 对比 ${r.comparisons} · 综合 ${r.synthesis}（新编译 ${r.compiled}，跳过 ${r.skipped}）`)
+    const again = compileWiki(getDb())
+    console.log(`[wiki] 幂等复跑：新编译 ${again.compiled}，跳过 ${again.skipped}`)
+    if (process.env.ZHAIXING_EXPORT_DIR) {
+      const r = exportWiki(getDb(), process.env.ZHAIXING_EXPORT_DIR)
+      console.log(`[wiki] 导出 ${r.files} 页 → ${r.dir}${r.failed.length ? '（失败 ' + r.failed.length + '）' : ''}`)
+    }
+    closeDb()
+    app.exit(0)
+  } catch (err) {
+    console.error('[wiki] 失败：', err instanceof Error ? err.message : String(err))
     closeDb()
     app.exit(1)
   }

@@ -168,7 +168,7 @@ export default function BookDetailView({
           <div className="min-w-0 flex-1">
             <h1 className="t-display truncate">
               《{book.title}》
-              <span className="ml-3 text-[13px] font-normal text-[var(--text-dim)]">{book.author}</span>
+              <span className="ml-3 text-[14px] font-normal text-[var(--text-dim)]">{book.author}</span>
             </h1>
             <div className="mt-1.5 flex items-center gap-3 text-[12px] text-[var(--text-dim)]">
               <span className="flex cursor-pointer items-center" title="评分">
@@ -213,7 +213,7 @@ export default function BookDetailView({
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: DUR.delight, ease: EASE_OUT }}
-            className="serif mt-3 block max-w-[640px] rounded-lg border border-[rgba(251,191,36,0.35)] bg-[rgba(251,191,36,0.06)] px-4 py-2 text-left text-[12.5px] italic leading-7"
+            className="serif mt-3 block max-w-[640px] rounded-lg border border-[rgba(251,191,36,0.35)] bg-[rgba(251,191,36,0.06)] px-4 py-2 text-left text-[12px] italic leading-7"
             onClick={() => {
               setFilter('all')
               setExpanded((prev) => {
@@ -250,7 +250,7 @@ export default function BookDetailView({
             </div>
           ) : (
             <button
-              className="serif text-left text-[12.5px] italic text-[var(--text-dim)] hover:text-[var(--text)]"
+              className="serif text-left text-[12px] italic text-[var(--text-dim)] hover:text-[var(--text)]"
               onClick={() => setReviewDraft(book.short_review)}
             >
               {book.short_review ? `❝ ${book.short_review}` : '+ 写一句短评'}
@@ -273,7 +273,7 @@ export default function BookDetailView({
                 <button
                   key={c.key}
                   onClick={() => setFilter(c.key)}
-                  className={`rounded-full border px-3 py-1 text-[12px] transition-colors ${
+                  className={`rounded-full border px-3 py-1 text-[14px] tap ${
                     filter === c.key
                       ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
                       : 'border-[var(--line)] text-[var(--text-dim)] hover:text-[var(--text)]'
@@ -282,7 +282,7 @@ export default function BookDetailView({
                   {c.label} <span className="opacity-70">{c.count}</span>
                 </button>
               ))}
-              <span className="ml-auto text-[11.5px] text-[var(--text-dim)]">
+              <span className="ml-auto text-[12px] text-[var(--text-dim)]">
                 {chapters.length} 个章节 · 点击章节行展开划线
               </span>
               <button
@@ -300,14 +300,14 @@ export default function BookDetailView({
               return (
                 <section key={chapter} className="mb-2">
                   <button
-                    className="group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-[var(--surface-2)]"
+                    className="group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left tap hover:bg-[var(--surface-2)]"
                     onClick={() => toggleChapter(chapter)}
                   >
-                    <span className="w-3 text-[11px] text-[var(--text-dim)]">{open ? '▾' : '▸'}</span>
-                    <h2 className="min-w-0 max-w-[340px] truncate text-[13px] font-medium" title={chapter}>
+                    <span className="w-3 text-[12px] text-[var(--text-dim)]">{open ? '▾' : '▸'}</span>
+                    <h2 className="min-w-0 max-w-[340px] truncate text-[14px] font-medium" title={chapter}>
                       {chapter}
                     </h2>
-                    <span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] text-[var(--accent)]">
+                    <span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[12px] text-[var(--accent)]">
                       {list.length}
                     </span>
                     {/* 密度条（scaleX 合成器动画，不动布局） */}
@@ -371,7 +371,7 @@ export default function BookDetailView({
           transition={{ duration: DUR.slow, ease: EASE_OUT }}
           className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-[rgba(221,91,0,0.4)]  px-5 py-2.5 shadow-xl"
         >
-          <span className="text-[13px]">已选 {selected.size} 颗星</span>
+          <span className="text-[14px]">已选 {selected.size} 颗星</span>
           <button className="btn btn-sm btn-primary" disabled={selected.size < 2} onClick={beginMerge}>
             合并碎片
           </button>
@@ -519,7 +519,7 @@ function StarCard({
               </div>
             </div>
           ) : (
-            <div className="serif text-[13.5px] leading-7" onDoubleClick={() => setEditing(true)}>
+            <div className="serif text-[14px] leading-7" onDoubleClick={() => setEditing(true)}>
               {star.content}
             </div>
           )}
@@ -533,7 +533,7 @@ function StarCard({
                   {editingThought?.id === t.id ? (
                     <div>
                       <textarea
-                        className="input min-h-[60px] resize-y text-[12.5px]"
+                        className="input min-h-[60px] resize-y text-[12px]"
                         autoFocus
                         value={editingThought.content}
                         onChange={(e) => setEditingThought({ ...editingThought, content: e.target.value })}
@@ -555,7 +555,7 @@ function StarCard({
                       </div>
                     </div>
                   ) : (
-                    <div className="text-[12.5px] italic leading-6 text-[var(--text-dim)]">
+                    <div className="text-[12px] italic leading-6 text-[var(--text-dim)]">
                       <span className="serif">{t.content}</span>
                       <span className="ml-2 not-italic opacity-60">{(t.thought_date || t.created_at).slice(0, 10)}</span>
                       <span className="ml-2 hidden gap-2 not-italic group-hover/t:inline">
@@ -582,7 +582,7 @@ function StarCard({
           {/* 落一笔 */}
           <div className="mt-2.5 flex gap-2">
             <input
-              className="input py-1 text-[12.5px]"
+              className="input py-1 text-[12px]"
               placeholder="在这颗星上落一笔想法…"
               value={thoughtDraft}
               onChange={(e) => setThoughtDraft(e.target.value)}
@@ -594,7 +594,7 @@ function StarCard({
           </div>
 
           {/* 标签 + 元信息 */}
-          <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-dim)]">
+          <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[12px] text-[var(--text-dim)]">
             {(star.tags ?? []).map((t) => (
               <span key={t} className="rounded-full border border-[var(--line)] px-2 py-0.5">
                 #{t}
@@ -605,7 +605,7 @@ function StarCard({
             ))}
             {showTagInput ? (
               <input
-                className="input w-28 py-0.5 text-[11px]"
+                className="input w-28 py-0.5 text-[12px]"
                 autoFocus
                 placeholder="标签名，回车"
                 value={tagDraft}

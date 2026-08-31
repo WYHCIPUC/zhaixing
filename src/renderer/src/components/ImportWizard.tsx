@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { ImportReport, ParseResult } from '@shared/types'
-import { SPRING_SETTLE } from '../motion'
+import { DUR, EASE_OUT, SPRING_SETTLE } from '../motion'
 
 // 导入向导：粘贴 → 解析预览（可改文本重解）→ 确认入库
 export default function ImportWizard({
@@ -16,6 +16,7 @@ export default function ImportWizard({
   const [report, setReport] = useState<ImportReport | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const stage = report ? 'report' : parsed ? 'preview' : 'paste'
   const fileRef = useRef<HTMLInputElement>(null)
 
   const doParse = async (input?: string): Promise<void> => {
@@ -76,11 +77,12 @@ export default function ImportWizard({
         </header>
 
         <div className="flex-1 overflow-y-auto px-6 py-5">
-          {error && <div className="mb-3 rounded-lg border border-red-400/50 bg-red-400/15 px-4 py-2 text-[12.5px] text-red-600">{error}</div>}
+          {error && <div className="mb-3 rounded-lg border border-red-400/50 bg-red-400/15 px-4 py-2 text-[12px] text-red-600">{error}</div>}
+          <motion.div key={stage} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: DUR.base, ease: EASE_OUT }}>
 
           {!parsed && !report && (
             <>
-              <p className="mb-3 text-[12.5px] leading-6 text-[var(--text-dim)]">
+              <p className="mb-3 text-[12px] leading-6 text-[var(--text-dim)]">
                 在微信读书 App 中：进入一本书 → <b>笔记</b> → 分享/更多 → <b>复制</b>，
                 然后把文本粘贴到这里。也支持直接拖入 .txt 文件。
               </p>
@@ -114,7 +116,7 @@ export default function ImportWizard({
 
           {parsed && !report && (
             <>
-              <div className="mb-4 flex flex-wrap items-center gap-4 rounded-lg border border-[var(--line)] bg-[#f6f5f4] px-4 py-2.5 text-[12.5px]">
+              <div className="mb-4 flex flex-wrap items-center gap-4 rounded-lg border border-[var(--line)] bg-[#f6f5f4] px-4 py-2.5 text-[12px]">
                 <span>
                   识别到 <b className="text-[var(--accent)]">{parsed.books.length}</b> 本书
                 </span>
@@ -143,13 +145,13 @@ export default function ImportWizard({
                     <div className="flex items-baseline gap-2">
                       <span className="text-[15px] font-medium">《{b.title}》</span>
                       <span className="text-[12px] text-[var(--text-dim)]">{b.author || '未识别作者'}</span>
-                      <span className="ml-auto text-[11.5px] text-[var(--text-dim)]">
+                      <span className="ml-auto text-[12px] text-[var(--text-dim)]">
                         {b.highlights.length} 条划线 · {b.chapters.length} 章
                       </span>
                     </div>
                     <div className="mt-3 max-h-[220px] space-y-2 overflow-y-auto pr-1">
                       {b.highlights.map((h, i) => (
-                        <div key={i} className="text-[12.5px] leading-6">
+                        <div key={i} className="text-[12px] leading-6">
                           <div className="serif flex gap-2 text-[var(--text)]">
                             <span className="star-mark shrink-0 select-none">✦</span>
                             <span>{h.content}</span>
@@ -182,16 +184,17 @@ export default function ImportWizard({
             <div className="flex flex-col items-center py-10 text-center">
               <div className="text-4xl star-mark twinkle">✦</div>
               <div className="mt-4 text-[16px]">入库完成</div>
-              <div className="mt-2 space-y-1 text-[13px] text-[var(--text-dim)]">
+              <div className="mt-2 space-y-1 text-[14px] text-[var(--text-dim)]">
                 <div>新增 {report.booksAdded} 本书 · 摘到 {report.highlightsAdded} 颗星 · {report.thoughtsAdded} 条想法</div>
                 {report.highlightsSkipped > 0 && <div>跳过重复划线 {report.highlightsSkipped} 条</div>}
-                <div className="mt-1 text-[11.5px] opacity-70">原始文本已存档（#{report.archiveId}），随时可重放</div>
+                <div className="mt-1 text-[12px] opacity-70">原始文本已存档（#{report.archiveId}），随时可重放</div>
               </div>
               <button className="btn btn-primary mt-7" onClick={() => onDone(report)}>
                 完成
               </button>
             </div>
           )}
+          </motion.div>
         </div>
       </motion.div>
     </div>

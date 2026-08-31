@@ -18,13 +18,14 @@ export function getDb(): DB {
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
   db.exec(SCHEMA)
-  // 迁移：老库（user_version 0/1）补齐 v2 新列后再落版本号
+  // 迁移：老库补齐新列后再落版本号（v2 微信读书元数据，v3 书架 AI 分区）
   const uv = (db.pragma('user_version', { simple: true }) as number) ?? 0
-  if (uv < 2) {
+  if (uv < 3) {
     const alters = [
       'ALTER TABLE books ADD COLUMN chapter_count INTEGER',
       'ALTER TABLE books ADD COLUMN reading_progress REAL',
-      'ALTER TABLE books ADD COLUMN read_status TEXT'
+      'ALTER TABLE books ADD COLUMN read_status TEXT',
+      "ALTER TABLE books ADD COLUMN category TEXT NOT NULL DEFAULT ''"
     ]
     for (const sql of alters) {
       try {

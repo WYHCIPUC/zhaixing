@@ -87,7 +87,7 @@ export default function YearReplay({ onClose }: { onClose: () => void }) {
       className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-[#faf8f5]"
       onClick={onClose}
     >
-      <div className="mb-4 text-[13px] tracking-widest text-[var(--text-dim)]">你的星空，是这样亮起来的</div>
+      <div className="mb-4 text-[14px] tracking-widest text-[var(--text-dim)]">你的星空，是这样亮起来的</div>
       <canvas ref={canvasRef} className="h-[68vh] w-[86vw] rounded-xl border border-[var(--line)]" />
       <div className="mt-4 flex gap-3 text-[12px] text-[var(--text-dim)]">
         <button

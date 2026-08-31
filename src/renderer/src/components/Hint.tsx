@@ -22,7 +22,7 @@ export default function Hint({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ duration: 0.125, ease: [0.23, 1, 0.32, 1] }}
               style={{ transformOrigin: side === 'top' ? 'bottom' : 'top' }}
-              className="rounded-md bg-[#2b2723] px-2.5 py-1.5 text-[11.5px] font-medium text-[#faf8f5] shadow-[0_4px_16px_rgba(43,39,35,0.3)]"
+              className="rounded-md bg-[#2b2723] px-2.5 py-1.5 text-[12px] font-medium text-[#faf8f5] shadow-[0_4px_16px_rgba(43,39,35,0.3)]"
             >
               {label}
               <Tooltip.Arrow className="fill-[#2b2723]" width={10} height={5} />

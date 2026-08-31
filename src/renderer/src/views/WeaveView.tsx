@@ -94,7 +94,7 @@ export default function WeaveView() {
       <header className="mb-5 flex items-center gap-4">
         <div>
           <h1 className="t-display">织星</h1>
-          <p className="mt-0.5 text-[12.5px] text-[var(--text-dim)]">笔记的终点是作品</p>
+          <p className="mt-0.5 text-[12px] text-[var(--text-dim)]">笔记的终点是作品</p>
         </div>
         <div className="ml-auto flex rounded-lg border border-[var(--line)] p-0.5">
           {(
@@ -105,7 +105,7 @@ export default function WeaveView() {
           ).map(([k, label]) => (
             <button
               key={k}
-              className={`rounded-md px-3 py-1 text-[12.5px] ${mode === k ? 'bg-[rgba(221,91,0,0.15)] text-[var(--accent)]' : 'text-[var(--text-dim)]'}`}
+              className={`rounded-md px-3 py-1 text-[12px] ${mode === k ? 'bg-[rgba(221,91,0,0.15)] text-[var(--accent)]' : 'text-[var(--text-dim)]'}`}
               onClick={() => setMode(k)}
             >
               {label}
@@ -133,7 +133,7 @@ export default function WeaveView() {
                 {nebulae.map((n) => (
                   <button
                     key={n.id}
-                    className={`block w-full rounded-lg border px-3 py-2 text-left text-[12.5px] transition-colors ${
+                    className={`block w-full rounded-lg border px-3 py-2 text-left text-[14px] tap ${
                       activeNebula?.id === n.id
                         ? 'border-[rgba(221,91,0,0.5)] text-[var(--text)]'
                         : 'border-[var(--line)] text-[var(--text-dim)] hover:text-[var(--text)]'
@@ -161,7 +161,7 @@ export default function WeaveView() {
                   {articles.map((a) => (
                     <button
                       key={a.id}
-                      className={`block w-full rounded-lg border px-3 py-2 text-left text-[12px] ${
+                      className={`block w-full rounded-lg border px-3 py-2 text-left tap ${
                         active?.id === a.id ? 'border-[rgba(221,91,0,0.5)]' : 'border-[var(--line)]'
                       }`}
                       onClick={() => {
@@ -169,8 +169,8 @@ export default function WeaveView() {
                         setDraft(a.content_md)
                       }}
                     >
-                      <div className="serif truncate">{a.title}</div>
-                      <div className="text-[11px] text-[var(--text-dim)]">
+                      <div className="serif truncate text-[14px]">{a.title}</div>
+                      <div className="text-[12px] text-[var(--text-dim)]">
                         v{a.version} · {a.updated_at.slice(0, 10)}
                       </div>
                     </button>
@@ -182,7 +182,7 @@ export default function WeaveView() {
 
           {/* 编辑器 */}
           <div className="panel min-w-0 flex-1 p-6">
-            {!active && !busy && <div className="mt-16 text-center text-[13px] text-[var(--text-dim)]">选一片星云，让星空自己长出第一篇文章</div>}
+            {!active && !busy && <div className="mt-16 text-center text-[14px] text-[var(--text-dim)]">选一片星云，让星空自己长出第一篇文章</div>}
             {busy && (
               <div className="mt-2 space-y-4" aria-hidden>
                 <div className="shimmer h-6 w-1/3 rounded-md" />
@@ -207,7 +207,7 @@ export default function WeaveView() {
                   onChange={(e) => setActive({ ...active, title: e.target.value })}
                   onBlur={() => void window.api.updateArticleTitle(active.id, active.title)}
                 />
-                <div className="mt-1 text-[11px] text-[var(--text-dim)]">
+                <div className="mt-1 text-[12px] text-[var(--text-dim)]">
                   第 {active.version} 版 · {active.updated_at} · 历史版本 {historyOf(active).length} 份
                 </div>
                 <textarea
@@ -263,14 +263,14 @@ export default function WeaveView() {
                 {answer.cites.map((c) => (
                   <div key={c.id} className="rounded-lg border border-[var(--line)] px-3 py-2 text-[12px]">
                     <div className="serif line-clamp-2 leading-6">{c.content}</div>
-                    <div className="mt-0.5 text-[11px] text-[var(--text-dim)]">《{c.book}》{c.chapter}</div>
+                    <div className="mt-0.5 text-[12px] text-[var(--text-dim)]">《{c.book}》{c.chapter}</div>
                   </div>
                 ))}
               </div>
             </motion.div>
           )}
           {!answer && (
-            <div className="mt-14 text-center text-[12.5px] leading-7 text-[var(--text-dim)]">
+            <div className="mt-14 text-center text-[12px] leading-7 text-[var(--text-dim)]">
               AI 用你自己的划线作答，每句附出处。<br />
               需要已配置 AI 并跑过分析（生成向量）。
             </div>

@@ -10,6 +10,8 @@ interface Node {
   spikes: boolean
   x: number
   y: number
+  is_star: boolean // 恒星：每本书重要度最高的笔记（v6 天文层级）
+  importance: number
 }
 
 type Edge = { source: number; target: number; kind: string }
@@ -21,10 +23,13 @@ export interface EngineCallbacks {
 }
 
 interface Core {
+  id: number // 星云 id；freeCore = -1
   wx: number
   wy: number
   mass: number
   spin: 1 | -1
+  dist: number // 距银河中心的半径（随整体自转取 baseAng + rot）
+  baseAng: number
 }
 
 interface Haze {
@@ -40,9 +45,15 @@ const SOFTENING = 26 // ε：软化项，避免近距离奇点（真实宇宙中
 const PHYSICS_DT = 1 / 30 // 物理定步长 30Hz（与渲染帧率解耦）
 const BOUNDARY = 2600 // 软边界：逃逸的星会被极微弱的潮汐拉回
 const CORE_SOFTENING = 70 // 星云核心（超大质量体）的软化距离
+// v7 螺旋银河：星云核与尘埃层沿双臂对数螺旋分布，整个银河缓慢自转（借鉴 three.js galaxy generator）
+const GALAXY_ARMS = 2
+const GALAXY_RADIUS = 2350
+const GALAXY_SPIN = 0.0021 // 臂展开系数（rad / world px）
+const GALAXY_ROT = 0.0026 // 银河整体自转角速度 rad/s（约 40 分钟一圈）
 
 // 星云辉光色板
-const HAZE_PALETTE = ['#6d8bff', '#a78bfa', '#ff8f8f', '#5fd4b6', '#ffd08a', '#f0a3ff', '#7fd0ff', '#ffa057']
+// 真实发射星云的摄影色：H-α 红为主，反射星云蓝、电离氧青——不是彩虹
+const HAZE_PALETTE = ['#8ea4ff', '#c09aff', '#f07a7a', '#5fc9b6', '#e8b878', '#ef9de2', '#86d0ff', '#f0a482']
 
 function mulberry32(seed: number): () => number {
   let a = seed
@@ -126,6 +137,12 @@ export class StarfieldEngine {
   private ay = new Float32Array(0)
   private mass = new Float32Array(0)
   private cores: Core[] = []
+  private galaxy: HTMLCanvasElement | null = null // 烘焙的螺旋尘埃层（世界坐标，随银河自转）
+  private sysIdx = new Int32Array(0) // 行星 → 所属恒星的物理下标（恒星指向自身）
+  private starList: number[] = [] // 恒星的物理下标
+  private sysPlanets: number[][] = [] // 按恒星分组的行星下标
+  private bookSys = new Map<number, number>() // book_id → 恒星物理下标
+  private sysRing = new Map<number, number>() // book_id → 平均轨道半径（画轨道环用）
   private physicsAcc = 0
   private lastTime = 0
   // v5 §7：reduced-motion 时引擎停在单帧（无闪烁/漂移/流星）；§0.5-④：偶发流星
@@ -133,7 +150,6 @@ export class StarfieldEngine {
   private motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
   private meteor: { x: number; y: number; dx: number; dy: number; born: number } | null = null
   private nextMeteorAt = performance.now() + 18000 + Math.random() * 20000
-  private tickParity = false
   private hazeTimer: ReturnType<typeof setInterval> | null = null
 
   constructor(canvas: HTMLCanvasElement, cb: EngineCallbacks) {
@@ -144,6 +160,7 @@ export class StarfieldEngine {
     this.ro = new ResizeObserver(() => this.resize())
     this.ro.observe(canvas.parentElement ?? canvas)
     this.resize()
+    canvas.style.cursor = 'grab' 
     // 触屏：禁掉浏览器默认手势（滚动/系统缩放），单指拖动才能平移星图
     canvas.style.touchAction = 'none'
 
@@ -173,6 +190,7 @@ export class StarfieldEngine {
       this.dragging = true
       this.dragMoved = false
       this.lastMouse = { x: e.clientX, y: e.clientY }
+      canvas.style.cursor = 'grabbing' 
     })
     window.addEventListener('pointermove', (e) => {
       if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
@@ -200,6 +218,7 @@ export class StarfieldEngine {
         if (this.reduced) this.draw(performance.now() / 1000)
       } else if (mx >= 0 && my >= 0 && mx <= rect.width && my <= rect.height) {
         this.handleHover(mx, my)
+        if (!this.dragging) canvas.style.cursor = this.hoverId ? 'pointer' : 'grab'
       }
     })
     window.addEventListener('pointerup', (e) => {
@@ -207,6 +226,7 @@ export class StarfieldEngine {
       if (pointers.size < 2) pinchDist = 0
       if (this.dragging && !this.dragMoved) this.handleClick()
       this.dragging = false
+      canvas.style.cursor = 'grab' 
     })
     window.addEventListener('pointercancel', (e) => {
       pointers.delete(e.pointerId)
@@ -266,15 +286,22 @@ export class StarfieldEngine {
 
   setData(data: StarMapData): void {
     // 星云核心：黄金角螺旋布置，质量 ∝ 成员数（相当于星系中心的超大质量体）
+    const rand = mulberry32(20260827)
     const nebInfo = data.nebulae.map((n) => ({ id: n.id, count: n.star_count ?? 0 }))
+    // 螺旋臂布点：核按索引沿双臂展开（臂内角 = arm*π + r*SPIN），银河整体再随时间自转
     const cores: Core[] = []
     const coreOf = new Map<number, Core>()
+    const total = Math.max(1, nebInfo.length)
     nebInfo.forEach((n, i) => {
-      const radius = 160 + Math.sqrt(n.count) * 15
-      const angle = i * 2.39996 + 0.6
+      const arm = i % GALAXY_ARMS
+      const rr = 340 + (i / total) * (GALAXY_RADIUS - 700) + (rand() - 0.5) * 260
+      const ang = (arm * Math.PI) + rr * GALAXY_SPIN + (rand() - 0.5) * 0.34
       const core: Core = {
-        wx: Math.cos(angle) * radius,
-        wy: Math.sin(angle) * radius * 0.85,
+        id: n.id,
+        dist: rr,
+        baseAng: ang,
+        wx: Math.cos(ang) * rr,
+        wy: Math.sin(ang) * rr,
         mass: 60 + n.count * 26,
         spin: i % 2 === 0 ? 1 : -1 // 每个星系自转方向不同
       }
@@ -282,12 +309,34 @@ export class StarfieldEngine {
       coreOf.set(n.id, core)
     })
     const freeCount = data.stars.filter((s) => s.nebula_ids[0] === undefined).length
-    const freeCore: Core = { wx: 0, wy: 0, mass: freeCount * 10, spin: 1 }
+    const freeCore: Core = { id: -1, dist: 60, baseAng: rand() * Math.PI * 2, wx: 0, wy: 0, mass: freeCount * 10, spin: 1 }
     if (freeCount > 0) cores.push(freeCore)
     this.cores = cores
 
-    // 初始化恒星：位置在核心附近，带切向轨道速度（v = √(GM/r)，像行星绕日）
-    const rand = mulberry32(20260827)
+    // ---- 天文层级（v6）：银河 → 星云核 → 恒星（每书最重要笔记）→ 行星（同书其余笔记） ----
+    // rand 已在上方（螺旋布点处）定义
+    const importanceOf = (s: StarMapStar): number =>
+      (s.is_gem ? 40 : 0) + (s.favorite ? 12 : 0) + s.revisit_count * 4 + Math.min(12, s.content.length / 40)
+
+    const byBook = new Map<number, StarMapStar[]>()
+    for (const s of data.stars) {
+      const list = byBook.get(s.book_id) ?? []
+      list.push(s)
+      byBook.set(s.book_id, list)
+    }
+    const sysStarOf = new Map<number, StarMapStar>() // book_id → 恒星（该书重要度最高者）
+    const planetRank = new Map<number, number>() // star.id → 系内轨道序（重要的行星更近）
+    for (const [bookId, list] of byBook) {
+      let best = list[0]
+      for (const s of list) if (importanceOf(s) > importanceOf(best)) best = s
+      sysStarOf.set(bookId, best)
+      const planets = list
+        .filter((x) => x !== best)
+        .sort((a, b) => importanceOf(b) - importanceOf(a))
+      planets.forEach((p, idx) => planetRank.set(p.id, idx))
+    }
+
+    // 初始化：位置在核心附近，带切向轨道速度（v = √(GM/r)，像行星绕日）
     const n = data.stars.length
     this.px = new Float32Array(n)
     this.py = new Float32Array(n)
@@ -296,40 +345,87 @@ export class StarfieldEngine {
     this.ax = new Float32Array(n)
     this.ay = new Float32Array(n)
     this.mass = new Float32Array(n)
+    this.sysIdx = new Int32Array(n)
+    this.starList = []
+    this.sysPlanets = []
+    this.bookSys = new Map()
+    this.sysRing = new Map()
+    const idxOfStar = new Map<number, number>() // star.id → 物理下标
+
+    // 第一遍：先布恒星（绕星云核），壳体信息同步建好
     this.nodes = data.stars.map((s, i) => {
-      const len = Math.min(2.4, s.content.length / 90)
-      // 星等按幂律分布：绝大多数是暗小微星，少数是亮星（真实星空的亮度结构）
+      const isStar = sysStarOf.get(s.book_id) === s
+      const imp = importanceOf(s)
       const pr = Math.pow(rand(), 2.4)
-      const r = 0.9 + pr * 4.6 + (s.favorite ? 1.1 : 0) + (s.is_gem ? 2.4 : 0)
       const core = s.nebula_ids[0] !== undefined ? (coreOf.get(s.nebula_ids[0]) ?? freeCore) : freeCore
-      const dist = 60 + rand() * (60 + Math.sqrt(core.mass) * 3.2)
-      const ang = rand() * Math.PI * 2
-      const orbitalV = Math.sqrt((GRAVITY * core.mass) / Math.max(60, dist)) * (0.85 + rand() * 0.3)
-      this.px[i] = core.wx + Math.cos(ang) * dist
-      this.py[i] = core.wy + Math.sin(ang) * dist
-      // 切向速度 → 进入稳定轨道；每个星系按自转方向旋转
-      this.vx[i] = -Math.sin(ang) * orbitalV * core.spin + (rand() - 0.5) * 2
-      this.vy[i] = Math.cos(ang) * orbitalV * core.spin + (rand() - 0.5) * 2
-      this.mass[i] = 1 + Math.min(5, s.content.length / 380) + (s.favorite ? 2 : 0) + (s.is_gem ? 6 : 0) // 镇星之宝是本星域的引力核心
-      return {
+      const r = isStar
+        ? 3.0 + Math.min(4.4, imp / 16) + (s.is_gem ? 1.0 : 0)
+        : 0.9 + pr * 3.4 + (s.favorite ? 0.9 : 0)
+      // 星色 = 黑体辐射色温（真实照片的星色分布：白为主，蓝白/暖黄/橙是少数）
+      const specRoll = rand()
+      const spectrum = specRoll < 0.1 ? '#ccd8ff' : specRoll < 0.65 ? '#f6f5ff' : specRoll < 0.9 ? '#fff1d8' : '#ffdcae'
+      const color = s.is_gem ? '#ffd166' : isStar ? '#fff3e0' : spectrum
+      const node: Node = {
         id: s.id,
         star: s,
         r,
-        color: s.is_gem
-          ? '#ffd166'
-          : s.nebula_ids[0] !== undefined
-            ? (data.nebulae.find((x) => x.id === s.nebula_ids[0])?.color ?? s.book_color)
-            : s.book_color,
+        color,
         phase: rand() * Math.PI * 2,
         bright: Math.min(1, 0.16 + pr * 0.5 + s.revisit_count * 0.15 + (s.favorite ? 0.25 : 0)),
-        spikes: r >= 3.4 || Boolean(s.is_gem),
-        x: this.px[i],
-        y: this.py[i]
+        spikes: isStar || r >= 3.4 || Boolean(s.is_gem),
+        x: 0,
+        y: 0,
+        is_star: isStar,
+        importance: imp
       }
+      idxOfStar.set(s.id, i)
+      this.sysIdx[i] = i // 先自指，第二遍修正行星指向
+      if (isStar) {
+        this.starList.push(i)
+        this.bookSys.set(s.book_id, i)
+        const dist = 60 + rand() * (60 + Math.sqrt(core.mass) * 3.2)
+        const ang = rand() * Math.PI * 2
+        const orbitalV = Math.sqrt((GRAVITY * core.mass) / Math.max(60, dist)) * (0.85 + rand() * 0.3)
+        this.px[i] = core.wx + Math.cos(ang) * dist
+        this.py[i] = core.wy + Math.sin(ang) * dist
+        this.vx[i] = -Math.sin(ang) * orbitalV * core.spin + (rand() - 0.5) * 2
+        this.vy[i] = Math.cos(ang) * orbitalV * core.spin + (rand() - 0.5) * 2
+        // 恒星是本星系的引力核心（仅次于星云核）
+        this.mass[i] = 26 + imp * 1.2 + (s.is_gem ? 14 : 0)
+      } else {
+        this.mass[i] = 1 + Math.min(4, s.content.length / 420) + (s.favorite ? 1.5 : 0)
+      }
+      return node
     })
-    // 恒星色温：莫兰迪书色向白混合 35%，只留微妙色偏（真实星色的呈现方式）
-    for (const n of this.nodes) {
-      if (!n.star.is_gem) n.color = mixWithWhite(n.color, 0.35)
+
+    // 第二遍：行星绕自己的恒星（位置/速度 = 恒星状态 + 续轨道）
+    const sysPlanetsMap = new Map<number, number[]>()
+    for (let i = 0; i < n; i++) {
+      if (this.nodes[i].is_star) continue
+      const s = data.stars[i]
+      const starIdx = idxOfStar.get(sysStarOf.get(s.book_id)!.id)!
+      this.sysIdx[i] = starIdx
+      const rank = planetRank.get(s.id) ?? 0
+      const dist = 15 + rank * 5.5 + rand() * 3 // 重要的行星更靠近恒星
+      const ang = rand() * Math.PI * 2
+      const orbitalV = Math.sqrt((GRAVITY * this.mass[starIdx]) / dist) * (0.9 + rand() * 0.2)
+      this.px[i] = this.px[starIdx] + Math.cos(ang) * dist
+      this.py[i] = this.py[starIdx] + Math.sin(ang) * dist
+      this.vx[i] = this.vx[starIdx] - Math.sin(ang) * orbitalV
+      this.vy[i] = this.vy[starIdx] + Math.cos(ang) * orbitalV
+      let list = sysPlanetsMap.get(starIdx)
+      if (!list) {
+        list = []
+        sysPlanetsMap.set(starIdx, list)
+      }
+      list.push(i)
+    }
+    this.sysPlanets = [...sysPlanetsMap.values()]
+    // 每系平均轨道半径（轨道环绘制用）
+    for (const [starIdx, list] of sysPlanetsMap) {
+      let sum = 0
+      for (const pi of list) sum += Math.hypot(this.px[pi] - this.px[starIdx], this.py[pi] - this.py[starIdx])
+      this.sysRing.set(this.nodes[starIdx].star.book_id, sum / Math.max(1, list.length))
     }
     this.byId = new Map(this.nodes.map((n, i) => [n.id, i]))
 
@@ -341,6 +437,77 @@ export class StarfieldEngine {
     if (this.hazeTimer) clearInterval(this.hazeTimer)
     this.hazeTimer = setInterval(() => this.computeHaze(), 15000)
     this.buildBackground()
+    this.buildGalaxyLayer()
+  }
+
+  // 螺旋银河尘埃层：借鉴 three.js galaxy generator——粒子沿双臂分布、
+  // 内暖外冷的颜色渐变、高斯散布，一次性烘焙成世界坐标离屏画布
+  private buildGalaxyLayer(): void {
+    const SZ = 2800 // 烘焙半边长（世界 2800px，画布缩 0.5）
+    const c = document.createElement('canvas')
+    c.width = SZ
+    c.height = SZ
+    const g = c.getContext('2d')!
+    g.fillStyle = '#000000'
+    g.fillRect(0, 0, SZ, SZ)
+    g.globalCompositeOperation = 'lighter'
+    const rand = mulberry32(99181)
+    const put = (wx: number, wy: number, r: number, color: string): void => {
+      g.fillStyle = color
+      g.beginPath()
+      g.arc((wx + SZ) * 0.5, (wy + SZ) * 0.5, r * 0.5, 0, Math.PI * 2)
+      g.fill()
+    }
+    const lerpColor = (t: number, a: number): string => {
+      // 内暖（核球橙黄）→ 外冷（旋臂蓝白）
+      const r1 = 255, g1 = 210, b1 = 160
+      const r2 = 143, g2 = 176, b2 = 255
+      const rr = Math.round(r1 + (r2 - r1) * t)
+      const gg = Math.round(g1 + (g2 - g1) * t)
+      const bb = Math.round(b1 + (b2 - b1) * t)
+      return `rgba(${rr},${gg},${bb},${a})`
+    }
+    // ① 核球（中心隆起，老年星，暖色密集）
+    for (let i = 0; i < 4200; i++) {
+      const rr = Math.abs(rand() + rand() - 1) * 300
+      const ang = rand() * Math.PI * 2
+      const t = rr / GALAXY_RADIUS
+      put(Math.cos(ang) * rr, Math.sin(ang) * rr, rand() * 1.1 + 0.3, lerpColor(t * 0.4, rand() * 0.35 + 0.08))
+    }
+    // ② 双臂尘埃（对数螺旋 + 高斯散布，颜色沿半径渐变）
+    const N = 21000
+    for (let i = 0; i < N; i++) {
+      const arm = i % GALAXY_ARMS
+      const rr = 120 + Math.pow(rand(), 0.72) * (GALAXY_RADIUS - 220)
+      const spinA = rr * GALAXY_SPIN
+      const scatter = (rand() + rand() + rand() - 1.5) / 1.5 // 高斯近似
+      const spread = 46 + rr * 0.085 // 越靠外臂越宽
+      const off = scatter * spread
+      const ang = arm * Math.PI + spinA + (off / Math.max(200, rr)) * 1.9
+      const d = rr + off * 0.22
+      const t = d / GALAXY_RADIUS
+      put(Math.cos(ang) * d, Math.sin(ang) * d, (rand() * 0.9 + 0.3) * (0.7 + t * 0.6), lerpColor(Math.min(1, t + 0.12), rand() * 0.3 + 0.06))
+    }
+    // ③ 暗尘埃带（沿臂的暗斑，真实星系的吸光带）
+    g.globalCompositeOperation = 'source-over'
+    for (let i = 0; i < 900; i++) {
+      const arm = i % GALAXY_ARMS
+      const rr = 260 + rand() * (GALAXY_RADIUS - 500)
+      const spinA = rr * GALAXY_SPIN + 0.05
+      const off = (rand() - 0.5) * 40
+      const ang = arm * Math.PI + spinA + (off / Math.max(200, rr)) * 1.9
+      const d = rr + off * 0.22
+      const r = rand() * 26 + 8
+      const bx = (d * Math.cos(ang) + SZ) * 0.5
+      const by = (d * Math.sin(ang) + SZ) * 0.5
+      const br = r * 0.5
+      const grad = g.createRadialGradient(bx, by, 0, bx, by, br)
+      grad.addColorStop(0, `rgba(2,3,9,${rand() * 0.18 + 0.1})`)
+      grad.addColorStop(1, 'rgba(0,0,0,0)')
+      g.fillStyle = grad
+      g.fillRect(bx - br, by - br, br * 2, br * 2)
+    }
+    this.galaxy = c
   }
 
   private nebulaSprites = new Map<number, HTMLCanvasElement>()
@@ -463,11 +630,38 @@ export class StarfieldEngine {
     const idx = this.byId.get(id)
     if (idx === undefined) return
     this.camTarget = { x: this.px[idx], y: this.py[idx], k: Math.max(1.6, this.cam.k) }
-    if (this.reduced) {
+    this.snapIfReduced()
+  }
+
+  // 飞向某片星云（AI 分类的语义区域）
+  focusNebula(nebulaId: number): void {
+    const core = this.cores.find((c) => c.id === nebulaId)
+    if (!core) return
+    this.camTarget = { x: core.wx, y: core.wy, k: Math.max(1.05, this.cam.k) }
+    this.snapIfReduced()
+  }
+
+  // 飞向某本书的恒星系
+  focusSystem(bookId: number): void {
+    const idx = this.bookSys.get(bookId)
+    if (idx === undefined) return
+    this.camTarget = { x: this.px[idx], y: this.py[idx], k: Math.max(2.2, this.cam.k) }
+    this.snapIfReduced()
+  }
+
+  // 回到银河全景
+  focusHome(): void {
+    this.camTarget = { x: 0, y: 0, k: 0.5 }
+    this.snapIfReduced()
+  }
+
+  private snapIfReduced(): void {
+    if (!this.reduced) return
+    if (this.camTarget) {
       this.cam = { ...this.camTarget }
       this.camTarget = null
-      this.draw(performance.now() / 1000)
     }
+    this.draw(performance.now() / 1000)
   }
 
   renderWallpaper(width = 2560, height = 1440): string {
@@ -596,7 +790,7 @@ export class StarfieldEngine {
       g.arc(t, off, r, 0, Math.PI * 2)
       g.fill()
     }
-    for (let i = 0; i < Math.floor(30 * scale); i++) {
+    for (let i = 0; i < Math.floor(52 * scale); i++) {
       const t = (rand() - 0.5) * len
       const off = ((rand() + rand()) - 1) * band * 0.7
       const r = (rand() * 46 + 16) * scale
@@ -606,8 +800,26 @@ export class StarfieldEngine {
       g.fillStyle = grad2
       g.fillRect(t - r, off - r, r * 2, r * 2)
     }
+    // 银河带内的解析恒星流（照片级银河的关键：带内星密度数倍于带外）
+    const bandStars = Math.floor(len * band * 0.028)
+    for (let i = 0; i < bandStars; i++) {
+      const t = (rand() - 0.5) * len
+      const off = ((rand() + rand() + rand()) / 1.5 - 1) * band * 0.62
+      const rr = rand() < 0.9 ? rand() * 0.6 + 0.25 : rand() * 1.1 + 0.6
+      const a = rand() * 0.5 + 0.12
+      const cRoll = rand()
+      g.fillStyle =
+        cRoll < 0.72
+          ? `rgba(235,240,255,${a})`
+          : cRoll < 0.9
+            ? `rgba(255,238,214,${a})`
+            : `rgba(206,220,255,${a})`
+      g.beginPath()
+      g.arc(t, off, rr, 0, Math.PI * 2)
+      g.fill()
+    }
     // 尘埃暗裂缝（银河中央的暗带——真实照片的标志性特征）
-    for (let i = 0; i < Math.floor(46 * scale); i++) {
+    for (let i = 0; i < Math.floor(60 * scale); i++) {
       const t = (rand() - 0.5) * len
       const off = ((rand() + rand() + rand()) / 1.5 - 1) * band * 0.28
       const r = (rand() * 30 + 8) * scale
@@ -620,7 +832,7 @@ export class StarfieldEngine {
     g.restore()
 
     // 远景背景星系（哈勃深空场里的小小椭圆光斑）
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0; i < 48; i++) {
       const x = rand() * w
       const y = rand() * h
       const r = (rand() * 5 + 2) * scale
@@ -641,7 +853,7 @@ export class StarfieldEngine {
     }
 
     // 全天散布星尘（三层色温）
-    const count = Math.floor((w * h) / (5200 * scale))
+    const count = Math.floor((w * h) / (1500 * scale))
     for (let i = 0; i < count; i++) {
       const x = rand() * w
       const y = rand() * h
@@ -650,6 +862,17 @@ export class StarfieldEngine {
       g.fillStyle = [`rgba(210,222,255,${a})`, `rgba(255,236,210,${a * 0.8})`, `rgba(255,255,255,${a * 0.9})`][i % 3]
       g.beginPath()
       g.arc(x, y, r, 0, Math.PI * 2)
+      g.fill()
+    }
+    // 微星第二层：更小更暗的背景星海（深空照片的解析度感）
+    const micro = Math.floor((w * h) / (850 * scale))
+    for (let i = 0; i < micro; i++) {
+      const x = rand() * w
+      const y = rand() * h
+      const a = rand() * 0.22 + 0.06
+      g.fillStyle = rand() < 0.85 ? `rgba(226,232,250,${a})` : `rgba(255,240,220,${a})`
+      g.beginPath()
+      g.arc(x, y, (rand() * 0.35 + 0.2) * scale, 0, Math.PI * 2)
       g.fill()
     }
 
@@ -729,10 +952,11 @@ export class StarfieldEngine {
     const g = GRAVITY
     const e2 = SOFTENING * SOFTENING
 
-    // 星云核心的引力（星系中心的超大质量体）
+    // 层级引力①：星云核心 → 恒星（超大质量体只统辖恒星，行星由恒星统辖）
     const ce2 = CORE_SOFTENING * CORE_SOFTENING
     for (const c of this.cores) {
       for (let i = 0; i < n; i++) {
+        if (!this.nodes[i].is_star) continue
         const dx = c.wx - this.px[i]
         const dy = c.wy - this.py[i]
         const d2 = dx * dx + dy * dy + ce2
@@ -742,17 +966,27 @@ export class StarfieldEngine {
       }
     }
 
-    // 星与星的互相摄动：质量虽小，但会真实地改变彼此的轨迹
-    this.tickParity = !this.tickParity
-    const skipPairs = n > 2600 && this.tickParity
+    // 层级引力②：行星 → 所属恒星（每个恒星系是一个小太阳系）
     for (let i = 0; i < n; i++) {
-      const pxi = this.px[i]
-      const pyi = this.py[i]
-      const mi = this.mass[i]
-      const jStart = skipPairs && i % 2 === 0 ? i + 2 : i + 1
-      for (let j = jStart; j < n; j++) {
-        const dx = this.px[j] - pxi
-        const dy = this.py[j] - pyi
+      if (this.nodes[i].is_star) continue
+      const si = this.sysIdx[i]
+      if (si < 0 || si === i) continue
+      const dx = this.px[si] - this.px[i]
+      const dy = this.py[si] - this.py[i]
+      const d2 = dx * dx + dy * dy + e2
+      const inv = (g * this.mass[si]) / (d2 * Math.sqrt(d2))
+      this.ax[i] += dx * inv
+      this.ay[i] += dy * inv
+    }
+
+    // 层级引力③：恒星之间的互相摄动（144 级别，全对）
+    const S = this.starList.length
+    for (let a = 0; a < S; a++) {
+      const i = this.starList[a]
+      for (let b = a + 1; b < S; b++) {
+        const j = this.starList[b]
+        const dx = this.px[j] - this.px[i]
+        const dy = this.py[j] - this.py[i]
         const d2 = dx * dx + dy * dy + e2
         const inv = g / (d2 * Math.sqrt(d2))
         const fj = inv * this.mass[j]
@@ -761,6 +995,27 @@ export class StarfieldEngine {
         this.ay[i] += dy * fj
         this.ax[j] -= dx * fi
         this.ay[j] -= dy * fi
+      }
+    }
+
+    // 层级引力④：同系行星的互相摄动（系内数量少，全对；跨系不互扰以保轨道稳定）
+    for (const list of this.sysPlanets) {
+      const m = list.length
+      for (let a = 0; a < m; a++) {
+        const i = list[a]
+        for (let b = a + 1; b < m; b++) {
+          const j = list[b]
+          const dx = this.px[j] - this.px[i]
+          const dy = this.py[j] - this.py[i]
+          const d2 = dx * dx + dy * dy + e2
+          const inv = g / (d2 * Math.sqrt(d2))
+          const fj = inv * this.mass[j]
+          const fi = inv * this.mass[i]
+          this.ax[i] += dx * fj
+          this.ay[i] += dy * fj
+          this.ax[j] -= dx * fi
+          this.ay[j] -= dy * fi
+        }
       }
     }
 
@@ -791,6 +1046,13 @@ export class StarfieldEngine {
     let dt = (now - this.lastTime) / 1000
     this.lastTime = now
     if (dt > 0.1) dt = 0.1
+    // 银河自转：星云核沿各自圆轨道缓慢行进（尘埃层同步旋转，星群被引力拖曳）
+    const rot = (now / 1000) * GALAXY_ROT
+    for (const c of this.cores) {
+      const a = c.baseAng + rot
+      c.wx = Math.cos(a) * c.dist
+      c.wy = Math.sin(a) * c.dist
+    }
     this.physicsAcc += dt
     let steps = 0
     while (this.physicsAcc >= PHYSICS_DT && steps < 2) {
@@ -837,6 +1099,21 @@ export class StarfieldEngine {
     } else {
       ctx.fillStyle = '#080c1b'
       ctx.fillRect(0, 0, w, h)
+    }
+
+    // 螺旋银河尘埃层（世界坐标，随银河自转；一次 drawImage）
+    if (this.galaxy) {
+      const rot = this.reduced ? 0 : t * GALAXY_ROT
+      const cx = w / 2 - this.cam.x * this.cam.k
+      const cy = h / 2 - this.cam.y * this.cam.k
+      const gs = 5600 * this.cam.k
+      ctx.save()
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.globalAlpha = 0.9
+      ctx.translate(cx, cy)
+      ctx.rotate(rot)
+      ctx.drawImage(this.galaxy, -gs / 2, -gs / 2, gs, gs)
+      ctx.restore()
     }
 
     ctx.globalCompositeOperation = 'lighter'
@@ -913,33 +1190,36 @@ export class StarfieldEngine {
     }
     ctx.globalAlpha = 1
 
-    // 星
+    // 星（行星层）：LOD —— 远景(k<0.5)只见恒星与星云，行星随推近渐显
+    const planetA = Math.min(1, Math.max(0, (this.cam.k - 0.5) / 0.3))
+    if (planetA > 0)
     for (let i = 0; i < this.nodes.length; i++) {
       const n = this.nodes[i]
       const sx = this.screenX(i)
       const sy = this.screenY(i)
       if (sx < -80 || sx > w + 80 || sy < -80 || sy > h + 80) continue
-      if (n.star.is_gem) continue // 镇星之宝在恒星级渲染层单独绘制
+      if (n.is_star) continue // 恒星在恒星级渲染层单独绘制
       const tw = 0.82 + 0.18 * Math.sin(t * 1.4 + n.phase)
       if (n.r < 2.2) {
         // 暗小微星：实心小点（真实照片中绝大多数星是 1px 亮斑）
         const rr = Math.max(0.5, n.r * this.cam.k) * (0.85 + 0.15 * tw)
-        ctx.globalAlpha = Math.min(1, 0.22 + n.bright * 0.62) * tw
+        ctx.globalAlpha = Math.min(1, 0.22 + n.bright * 0.62) * tw * planetA
         ctx.fillStyle = n.color
         ctx.beginPath()
         ctx.arc(sx, sy, rr, 0, Math.PI * 2)
         ctx.fill()
       } else {
         const sprite = this.spriteFor(n.color)
-        const size = (n.r * 7.5 + (this.highlightIds.has(n.id) ? 10 : 0)) * this.cam.k * tw
-        ctx.globalAlpha = Math.min(1, 0.3 + n.bright * 0.75) * tw
+        // 全景下个体星只有几个像素，推近才放大——真实银河的尺度感（three.js galaxy 系做法）
+        const size = ((0.6 + n.r * 2.6) * this.cam.k + (this.highlightIds.has(n.id) ? 6 : 0)) * tw
+        ctx.globalAlpha = Math.min(1, 0.3 + n.bright * 0.75) * tw * planetA
         ctx.drawImage(sprite, sx - size / 2, sy - size / 2, size, size)
         if (this.highlightIds.has(n.id)) {
-          ctx.globalAlpha = 0.95
-          ctx.drawImage(sprite, sx - size / 2 - 4, sy - size / 2 - 4, size + 8, size + 8)
+          ctx.globalAlpha = 0.95 * planetA
+          ctx.drawImage(sprite, sx - size / 2 - 3, sy - size / 2 - 3, size + 6, size + 6)
         }
-        if (n.spikes && this.cam.k > 0.55) {
-          this.paintSpikes(ctx, sx, sy, size * 0.85, n.color, 0.4 * tw)
+        if (n.spikes && this.cam.k > 1.6) {
+          this.paintSpikes(ctx, sx, sy, size * 0.9, n.color, 0.35 * tw)
         }
       }
       if (this.multiSelected.has(n.id)) {
@@ -958,38 +1238,53 @@ export class StarfieldEngine {
       }
     }
 
-    // 镇星之宝：恒星级渲染——呼吸光晕 + 长衍射芒，本星域最亮的天体
+    // 恒星层：每书系的恒星 + 镇星之宝——呼吸光晕 + 衍射芒，本星域最亮的天体
     for (let i = 0; i < this.nodes.length; i++) {
       const n = this.nodes[i]
-      if (!n.star.is_gem) continue
+      if (!n.is_star) continue
+      const gem = n.star.is_gem
       const sx = this.screenX(i)
       const sy = this.screenY(i)
       if (sx < -180 || sx > w + 180 || sy < -180 || sy > h + 180) continue
-      const base = (n.r * 3.4 + 10) * Math.max(1, this.cam.k)
+      // 镇星之宝=全屏最亮天体（金色光晕+衍射芒+过曝条）；普通恒星只是「亮一些的星」，
+      // 144 个恒星若都用恒星级渲染会把画面糊成一堆光球（实测教训）
+      const base = (n.r * 3.2 + (gem ? 10 : 2)) * Math.max(1, this.cam.k)
       const pulse = 1 + 0.09 * Math.sin(t * 0.9 + n.phase)
-      // 呼吸外晕
-      const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, base * 3.4 * pulse)
-      halo.addColorStop(0, 'rgba(255,228,150,0.3)')
-      halo.addColorStop(0.4, 'rgba(255,200,90,0.1)')
-      halo.addColorStop(1, 'rgba(0,0,0,0)')
-      ctx.fillStyle = halo
-      ctx.fillRect(sx - base * 3.4 * pulse, sy - base * 3.4 * pulse, base * 6.8 * pulse, base * 6.8 * pulse)
-      // 恒星主体
-      const sprite = this.spriteFor('#ffd166')
       const size = base * 2.3 * pulse
-      ctx.globalAlpha = 1
-      ctx.drawImage(sprite, sx - size / 2, sy - size / 2, size, size)
-      // 衍射芒：4 长 + 4 短斜，缓慢呼吸
-      const rayA = 0.55 + 0.15 * Math.sin(t * 1.1 + n.phase)
-      this.paintSpikes(ctx, sx, sy, base * 2.6, '#ffe8b0', rayA)
-      this.paintSpikes(ctx, sx, sy, base * 1.5, '#ffe8b0', rayA * 0.6, Math.PI / 4)
-      // 镜头横向溢光（亮星过曝的水平 streak）
-      const streak = ctx.createLinearGradient(sx - base * 3.2, sy, sx + base * 3.2, sy)
-      streak.addColorStop(0, 'rgba(255,228,160,0)')
-      streak.addColorStop(0.5, `rgba(255,236,190,${0.24 + 0.1 * Math.sin(t * 1.3)})`)
-      streak.addColorStop(1, 'rgba(255,228,160,0)')
-      ctx.fillStyle = streak
-      ctx.fillRect(sx - base * 3.2, sy - 0.9, base * 6.4, 1.8)
+      if (gem) {
+        const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, base * 3.4 * pulse)
+        halo.addColorStop(0, 'rgba(255,228,150,0.3)')
+        halo.addColorStop(0.4, 'rgba(255,200,90,0.1)')
+        halo.addColorStop(1, 'rgba(0,0,0,0)')
+        ctx.fillStyle = halo
+        ctx.fillRect(sx - base * 3.4 * pulse, sy - base * 3.4 * pulse, base * 6.8 * pulse, base * 6.8 * pulse)
+        const sprite = this.spriteFor('#ffd166')
+        ctx.globalAlpha = 1
+        ctx.drawImage(sprite, sx - size / 2, sy - size / 2, size, size)
+        const rayA = 0.55 + 0.15 * Math.sin(t * 1.1 + n.phase)
+        this.paintSpikes(ctx, sx, sy, base * 2.6, '#ffe8b0', rayA)
+        this.paintSpikes(ctx, sx, sy, base * 1.5, '#ffe8b0', rayA * 0.6, Math.PI / 4)
+        const streak = ctx.createLinearGradient(sx - base * 3.2, sy, sx + base * 3.2, sy)
+        streak.addColorStop(0, 'rgba(255,228,160,0)')
+        streak.addColorStop(0.5, `rgba(255,236,190,${0.24 + 0.1 * Math.sin(t * 1.3)})`)
+        streak.addColorStop(1, 'rgba(255,228,160,0)')
+        ctx.fillStyle = streak
+        ctx.fillRect(sx - base * 3.2, sy - 0.9, base * 6.4, 1.8)
+      } else {
+        // 普通恒星：亮 sprite + 极轻核心光晕，推近时才给单层微芒
+        const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, size * 0.9)
+        halo.addColorStop(0, 'rgba(255,248,235,0.28)')
+        halo.addColorStop(1, 'rgba(0,0,0,0)')
+        ctx.fillStyle = halo
+        ctx.fillRect(sx - size * 0.9, sy - size * 0.9, size * 1.8, size * 1.8)
+        const sprite = this.spriteFor(n.color)
+        ctx.globalAlpha = 1
+        ctx.drawImage(sprite, sx - size / 2, sy - size / 2, size, size)
+        if (this.cam.k > 1.2) {
+          const rayA = (0.3 + 0.1 * Math.sin(t * 1.1 + n.phase)) * Math.min(1, (this.cam.k - 1.2) / 0.6)
+          this.paintSpikes(ctx, sx, sy, size * 0.9, '#fff3dc', rayA)
+        }
+      }
       // 选中/圈选环
       if (n.id === this.selectedId || this.multiSelected.has(n.id)) {
         ctx.strokeStyle = 'rgba(255,235,180,0.95)'
@@ -997,6 +1292,38 @@ export class StarfieldEngine {
         ctx.beginPath()
         ctx.arc(sx, sy, base * 1.25, 0, Math.PI * 2)
         ctx.stroke()
+      }
+    }
+
+    // 轨道环 + 书系标签（k≥1.4 渐显）：天文层级导航的视觉锚点
+    const sysA = Math.min(1, Math.max(0, (this.cam.k - 1.4) / 0.5))
+    if (sysA > 0) {
+      ctx.strokeStyle = 'rgb(190,205,235)'
+      ctx.lineWidth = 1
+      for (const [bookId, ringR] of this.sysRing) {
+        const si = this.bookSys.get(bookId)
+        if (si === undefined) continue
+        const sx = this.screenX(si)
+        const sy = this.screenY(si)
+        if (sx < -80 || sx > w + 80 || sy < -80 || sy > h + 80) continue
+        ctx.globalAlpha = 0.07 * sysA
+        ctx.beginPath()
+        ctx.arc(sx, sy, ringR * this.cam.k, 0, Math.PI * 2)
+        ctx.stroke()
+      }
+      ctx.globalCompositeOperation = 'source-over'
+      ctx.font = '500 11px Inter, "Microsoft YaHei UI", sans-serif'
+      ctx.textAlign = 'center'
+      for (const [bookId, si] of this.bookSys) {
+        const sx = this.screenX(si)
+        const sy = this.screenY(si)
+        if (sx < -60 || sx > w + 60 || sy < -60 || sy > h + 60) continue
+        const title = this.nodes[si].star.book_title
+        if (!title) continue
+        ctx.globalAlpha = 0.62 * sysA
+        ctx.fillStyle = 'rgb(206,216,238)'
+        const shown = title.length > 14 ? title.slice(0, 13) + '…' : title
+        ctx.fillText(shown, sx, sy - this.nodes[si].r * this.cam.k - 12)
       }
     }
 

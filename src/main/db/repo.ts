@@ -473,7 +473,12 @@ export function overview(db: DB): OverviewStats {
     highlightCount: count(`SELECT COUNT(*) AS n FROM highlights`),
     thoughtCount: count(`SELECT COUNT(*) AS n FROM thoughts`),
     tagCount: count(`SELECT COUNT(*) AS n FROM tags`),
-    archiveCount: count(`SELECT COUNT(*) AS n FROM import_archives`)
+    archiveCount: count(`SELECT COUNT(*) AS n FROM import_archives`),
+    readingCount: count(`SELECT COUNT(*) AS n FROM books WHERE status = 'reading'`),
+    finishedCount: count(`SELECT COUNT(*) AS n FROM books WHERE status = 'finished'`),
+    weeklyStars: count(
+      `SELECT COUNT(*) AS n FROM highlights WHERE created_at >= datetime('now', 'localtime', '-7 days')`
+    )
   }
 }
 

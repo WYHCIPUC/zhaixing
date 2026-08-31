@@ -73,7 +73,7 @@ export default function NightFlight({ onClose }: { onClose: () => void }) {
           >
             <div className="serif text-[19px] leading-[2.2]">{star.content}</div>
             {(star.thoughts?.length ?? 0) > 0 && (
-              <div className="mt-6 text-[13px] italic leading-8 text-[var(--text-dim)]">
+              <div className="mt-6 text-[14px] italic leading-8 text-[var(--text-dim)]">
                 {star.thoughts!.map((t) => (
                   <div key={t.id}>❝ {t.content}</div>
                 ))}
@@ -84,7 +84,7 @@ export default function NightFlight({ onClose }: { onClose: () => void }) {
             </div>
           </motion.div>
         ) : (
-          <div className="text-[13px] text-[var(--text-dim)]">夜空无星</div>
+          <div className="text-[14px] text-[var(--text-dim)]">夜空无星</div>
         )}
       </AnimatePresence>
 

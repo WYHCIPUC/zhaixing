@@ -30,6 +30,77 @@ function jsonFromReply<T>(reply: string): T | null {
   }
 }
 
+// 书架 AI 分区：全部书归入 6~10 个主题分区，写入 books.category（单次 LLM 调用，可重跑覆盖）
+export async function classifyBooks(
+  db: DB,
+  cfg: AiConfig
+): Promise<{ categories: { name: string; count: number }[] }> {
+  const books = db
+    .prepare(
+      `SELECT b.id, b.title, b.author, b.short_review FROM books b ORDER BY b.id`
+    )
+    .all() as { id: number; title: string; author: string; short_review: string }[]
+  if (books.length === 0) return { categories: [] }
+
+  const excerptStmt = db.prepare(
+    `SELECT content FROM highlights WHERE book_id = ? ORDER BY favorite DESC, LENGTH(content) DESC LIMIT 2`
+  )
+  const lines = books.map((b) => {
+    const ex = (excerptStmt.all(b.id) as { content: string }[])
+      .map((e) => e.content.slice(0, 60))
+      .join('／')
+    return `${b.id}|《${b.title}》${b.author ? ` ${b.author}` : ''}${
+      b.short_review ? `｜短评:${b.short_review.slice(0, 40)}` : ''
+    }${ex ? `｜摘:${ex}` : ''}`
+  })
+
+  const reply = await chat(
+    cfg,
+    [
+      {
+        role: 'system',
+        content:
+          '你是图书馆的书架管理员。把这位读者的全部书归入 6~10 个主题分区（如「心理学」「历史」「文学小说」「科学思维」），分区名 2-6 字。规则：每本书必须归入恰好一个分区；书太少或主题不明的书并入最接近的分区，宁用通用分区名也不要为孤本单开分区。只输出 JSON：{"categories":[{"name":"分区名","bookIds":[书id数字数组]}]}'
+      },
+      { role: 'user', content: lines.join('\n') }
+    ],
+    { json: true, temperature: 0.3 }
+  )
+  const parsed = jsonFromReply<{ categories?: { name?: string; bookIds?: (number | string)[] }[] }>(reply)
+  const cats = (parsed?.categories ?? []).filter((c): c is { name: string; bookIds: (number | string)[] } => Boolean(c?.name))
+  if (cats.length === 0) throw new Error('AI 返回无法解析，请重试')
+
+  const result: { name: string; count: number }[] = []
+  const tx = db.transaction(() => {
+    db.prepare(`UPDATE books SET category = ''`).run()
+    const update = db.prepare(`UPDATE books SET category = ? WHERE id = ?`)
+    const assigned = new Set<number>()
+    for (const c of cats) {
+      const name = (c.name ?? '').trim().slice(0, 24)
+      if (!name) continue
+      let n = 0
+      for (const id of c.bookIds ?? []) {
+        const numId = Number(id)
+        if (!Number.isFinite(numId) || assigned.has(numId)) continue
+        update.run(name, numId)
+        assigned.add(numId)
+        n++
+      }
+      if (n > 0) result.push({ name, count: n })
+    }
+    let unassigned = 0
+    for (const b of books) {
+      if (!assigned.has(b.id)) {
+        update.run('未分类', b.id)
+        unassigned++
+      }
+    }
+    if (unassigned > 0) result.push({ name: '未分类', count: unassigned })
+  })
+  tx()
+  return { categories: result }
+}
+
 // 阈值按 BAAI/bge-m3 实测分布校准（P50 邻近相似度 ≈ 0.61）：
 // 集群 0.62 ≈ 中位可入簇；双星 0.68 ≈ 前 10% 强共鸣；对撞带 0.50–0.68 为主张相近但相异的区间
 const CLUSTER_SIM = 0.62
@@ -97,6 +168,9 @@ async function buildAiNebulae(db: DB, cfg: AiConfig, report: AiRunReport): Promi
   for (const n of listNebulae(db)) {
     if (n.source === 'ai') deleteNebula(db, n.id)
   }
+  // 聚类名回写 ai_tags 的入口：先清空上一轮标签（该列只有 AI 写入）
+  db.prepare(`UPDATE highlights SET ai_tags = ''`).run()
+  const tagStmt = db.prepare(`UPDATE highlights SET ai_tags = ? WHERE id = ?`)
 
   const embeddings = allEmbeddings(db)
   if (embeddings.size < 6) return
@@ -131,7 +205,10 @@ async function buildAiNebulae(db: DB, cfg: AiConfig, report: AiRunReport): Promi
       )
       const parsed = jsonFromReply<{ name?: string; summary?: string }>(reply)
       if (parsed?.name) {
-        createNebula(db, parsed.name.slice(0, 24), parsed.summary?.slice(0, 500) ?? '', 'ai', null, members)
+        const name = parsed.name.slice(0, 24)
+        createNebula(db, name, parsed.summary?.slice(0, 500) ?? '', 'ai', null, members)
+        // 可查找性：簇名作为分类标签写给每个成员（v6 B4）
+        for (const m of members) tagStmt.run(name, m)
         report.nebulae++
         report.nebulaStars += members.length
       }

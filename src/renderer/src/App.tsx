@@ -9,16 +9,24 @@ import SkyView from './views/SkyView'
 import MeteorView from './views/MeteorView'
 import WeaveView from './views/WeaveView'
 import StatsView from './views/StatsView'
+import WikiView from './views/WikiView'
 import SearchOverlay from './components/SearchOverlay'
 import { MobileBottomNav, MobileTopBar } from './components/MobileChrome'
 import { DUR, EASE_OUT } from './motion'
 
-export type ViewKey = 'shelf' | 'sky' | 'meteor' | 'weave' | 'stats' | 'settings'
+export type ViewKey = 'shelf' | 'sky' | 'wiki' | 'meteor' | 'weave' | 'stats' | 'settings'
+
+export interface WikiTarget {
+  title?: string
+  type?: string
+  refId?: number
+}
 
 export default function App() {
   const [view, setView] = useState<ViewKey>('shelf')
   const [bookId, setBookId] = useState<number | null>(null)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [wikiTarget, setWikiTarget] = useState<WikiTarget | null>(null)
   const [reload, setReload] = useState(0)
   const refresh = useCallback(() => setReload((n) => n + 1), [])
 
@@ -82,7 +90,8 @@ export default function App() {
                 <BookshelfView reloadKey={reload} onOpenBook={openBook} onImported={refresh} />
               ))}
             {view === 'settings' && <SettingsView />}
-            {view === 'sky' && <SkyView />}
+            {view === 'sky' && <SkyView onOpenWiki={(t) => { setWikiTarget(t); setView('wiki') }} />}
+            {view === 'wiki' && <WikiView target={wikiTarget} />}
             {view === 'meteor' && <MeteorView />}
             {view === 'weave' && <WeaveView />}
             {view === 'stats' && <StatsView />}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { BarChart3, BookOpen, Feather, MoonStar, Settings, Sparkles } from 'lucide-react'
+import { BarChart3, BookOpen, Feather, MoonStar, Settings, Sparkles, Waypoints } from 'lucide-react'
 import Hint from './Hint'
 import type { OverviewStats } from '@shared/types'
 import type { ViewKey } from '../App'
@@ -10,6 +10,7 @@ import { DUR, EASE_OUT } from '../motion'
 const NAV: { key: ViewKey; label: string; icon: typeof BookOpen; spine: string }[] = [
   { key: 'shelf', label: '书架', icon: BookOpen, spine: '#c97b4a' },
   { key: 'sky', label: '星穹', icon: Sparkles, spine: '#6f8fa8' },
+  { key: 'wiki', label: '群星', icon: Waypoints, spine: '#a483b8' },
   { key: 'meteor', label: '流星', icon: MoonStar, spine: '#a483b8' },
   { key: 'weave', label: '织星', icon: Feather, spine: '#c9a227' },
   { key: 'stats', label: '统计', icon: BarChart3, spine: '#7a9e9f' },
@@ -41,7 +42,7 @@ export default function Sidebar({
           <span className="star-mark mr-1.5 inline-block">✦</span>
           摘星实录
         </motion.div>
-        <div className="mt-1 text-[11px] tracking-wide text-[var(--text-dim)]">
+        <div className="mt-1 text-[12px] tracking-wide text-[var(--text-dim)]">
           不教你记住，只帮你重逢
         </div>
       </div>
@@ -55,7 +56,7 @@ export default function Sidebar({
             <Hint key={n.key} label={n.label} side="right">
               <button
                 onClick={() => onNavigate(n.key)}
-                className={`group relative flex w-full items-center rounded-lg py-2 pl-4 pr-3 text-left text-[13.5px] font-medium transition-colors ${
+                className={`group relative flex w-full items-center rounded-lg py-2 pl-4 pr-3 text-left text-[14px] font-medium tap ${
                   active
                     ? 'bg-[var(--surface-2)] text-[var(--text)]'
                     : 'text-[var(--text-dim)] hover:bg-[rgba(15,15,15,0.03)] hover:text-[var(--text)]'
@@ -85,7 +86,29 @@ export default function Sidebar({
         })}
       </nav>
 
-      <div className="mt-auto px-2 text-[11.5px] leading-6 text-[var(--text-dim)]">
+      <div className="mt-auto space-y-3 px-2">
+        {/* 书房速览：利用左下角空白（v6 A4） */}
+        {stats && (
+          <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5">
+            <div className="text-[12px] font-medium text-[var(--text)]">书房速览</div>
+            <div className="mt-1.5 space-y-0.5 text-[12px] leading-5 text-[var(--text-dim)]">
+              <div>
+                在读 <span className="text-[var(--text)] tabular-nums">{stats.readingCount}</span>
+                <span className="mx-1 opacity-40">·</span>
+                读完 <span className="text-[var(--text)] tabular-nums">{stats.finishedCount}</span>
+              </div>
+              <div>
+                本周新增 <span className="star-mark tabular-nums">✦ {stats.weeklyStars}</span> 颗星
+              </div>
+            </div>
+            <button
+              className="tap mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-[var(--line)] py-1 text-[12px] text-[var(--text-dim)] hover:border-[var(--line-strong)] hover:text-[var(--text)]"
+              onClick={() => onNavigate('meteor')}
+            >
+              ☾ 进入夜航
+            </button>
+          </div>
+        )}
         {stats && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
             <div>

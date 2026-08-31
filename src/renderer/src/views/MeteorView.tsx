@@ -43,9 +43,9 @@ export default function MeteorView() {
       <header className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="t-display">
-            今日流星 <span className="ml-1 text-[13px] font-normal text-[var(--text-dim)]">{meteor?.date}</span>
+            今日流星 <span className="ml-1 text-[14px] font-normal text-[var(--text-dim)]">{meteor?.date}</span>
           </h1>
-          <p className="mt-0.5 text-[12.5px] text-[var(--text-dim)]">不教你记住，只帮你重逢</p>
+          <p className="mt-0.5 text-[12px] text-[var(--text-dim)]">不教你记住，只帮你重逢</p>
         </div>
         <button className="btn" onClick={() => setFlightOpen(true)}>
           ✧ 夜航模式
@@ -62,16 +62,16 @@ export default function MeteorView() {
           className="panel mx-auto max-w-[720px] p-8 text-center"
         >
           {meteor.source === 'capsule' && (
-            <div className="mb-4 inline-block rounded-full border border-[rgba(251,191,36,0.4)] bg-[rgba(251,191,36,0.08)] px-3 py-1 text-[11.5px] text-[var(--gold)]">
+            <div className="mb-4 inline-block rounded-full border border-[rgba(251,191,36,0.4)] bg-[rgba(251,191,36,0.08)] px-3 py-1 text-[12px] text-[var(--gold)]">
               ⏳ 一颗时间胶囊如约而至
             </div>
           )}
           {meteor.capsuleMessage && (
-            <div className="serif mb-4 text-[13px] italic text-[var(--gold)]">「{meteor.capsuleMessage}」</div>
+            <div className="serif mb-4 text-[14px] italic text-[var(--gold)]">「{meteor.capsuleMessage}」</div>
           )}
           <div className="serif text-[16px] leading-9">{meteor.star.content}</div>
           {(meteor.star.thoughts?.length ?? 0) > 0 && (
-            <div className="mt-4 border-t border-[var(--line)] pt-4 text-[12.5px] italic leading-7 text-[var(--text-dim)]">
+            <div className="mt-4 border-t border-[var(--line)] pt-4 text-[12px] italic leading-7 text-[var(--text-dim)]">
               {meteor.star.thoughts!.map((t) => (
                 <div key={t.id}>❝ {t.content}</div>
               ))}
@@ -82,7 +82,7 @@ export default function MeteorView() {
           </div>
           <div className="mt-6">
             {revisited ? (
-              <span className="text-[12.5px] text-[var(--text-dim)]">✓ 今日已重逢，星星更亮了一点</span>
+              <span className="text-[12px] text-[var(--text-dim)]">✓ 今日已重逢，星星更亮了一点</span>
             ) : (
               <button className="btn btn-primary" onClick={() => void markRevisited()}>
                 ✦ 我与它重逢了
@@ -97,19 +97,19 @@ export default function MeteorView() {
       {/* 时间胶囊 */}
       <section className="mx-auto mt-10 max-w-[720px]">
         <h2 className="text-[14px] font-medium">
-          ⏳ 时间胶囊 <span className="ml-2 text-[11.5px] font-normal text-[var(--text-dim)]">在任何一颗星的抽屉里埋下「半年后见」</span>
+          ⏳ 时间胶囊 <span className="ml-2 text-[12px] font-normal text-[var(--text-dim)]">在任何一颗星的抽屉里埋下「半年后见」</span>
         </h2>
         <div className="mt-3 space-y-2">
           {capsules.length === 0 && (
             <div className="text-[12px] text-[var(--text-dim)] opacity-60">还没有胶囊。到期的胶囊会化作当日流星。</div>
           )}
           {capsules.slice(0, 10).map((c) => (
-            <div key={c.id} className="panel flex items-center gap-3 px-4 py-2.5 text-[12.5px]">
+            <div key={c.id} className="panel flex items-center gap-3 px-4 py-2.5 text-[12px]">
               <span className={c.delivered ? 'text-[var(--text-dim)]' : 'text-[var(--gold)]'}>
                 {c.delivered ? '已投递' : due.includes(c) ? '今日到期' : `将于 ${c.deliver_at}`}
               </span>
               <span className="serif min-w-0 flex-1 truncate">{c.content}</span>
-              <span className="text-[11px] text-[var(--text-dim)]">《{c.book_title}》</span>
+              <span className="text-[12px] text-[var(--text-dim)]">《{c.book_title}》</span>
             </div>
           ))}
         </div>

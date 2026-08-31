@@ -79,17 +79,17 @@ export default function SettingsView() {
         >
           设置
         </motion.h1>
-        <p className="mt-0.5 text-[12.5px] text-[var(--text-dim)]">钥匙与数据都只属于你，存放在本机</p>
+        <p className="mt-0.5 text-[12px] text-[var(--text-dim)]">钥匙与数据都只属于你，存放在本机</p>
       </div>
 
       <section className="panel mt-6 max-w-[720px] p-6">
         <h2 className="text-[15px] font-medium">
-          AI 接入 <span className="ml-2 text-[11.5px] font-normal text-[var(--text-dim)]">（可选，未配置时所有手动功能照常可用）</span>
+          AI 接入 <span className="ml-2 text-[12px] font-normal text-[var(--text-dim)]">（可选，未配置时所有手动功能照常可用）</span>
         </h2>
         <div className="mt-4 space-y-4">
           {FIELDS.map((f) => (
             <div key={f.key}>
-              <label className="mb-1 block text-[12.5px] text-[var(--text-dim)]">{f.label}</label>
+              <label className="mb-1 block text-[12px] text-[var(--text-dim)]">{f.label}</label>
               <input
                 className="input"
                 type={f.password ? 'password' : 'text'}
@@ -97,7 +97,7 @@ export default function SettingsView() {
                 value={values[f.key] ?? ''}
                 onChange={(e) => set(f.key, e.target.value)}
               />
-              {f.hint && <div className="mt-1 text-[11px] text-[var(--text-dim)] opacity-70">{f.hint}</div>}
+              {f.hint && <div className="mt-1 text-[12px] text-[var(--text-dim)] opacity-70">{f.hint}</div>}
             </div>
           ))}
         </div>
@@ -109,7 +109,7 @@ export default function SettingsView() {
             {testing ? '测试中…' : '测试连接'}
           </button>
           {testResult && (
-            <span className={`text-[12.5px] ${testResult.ok ? 'text-emerald-600' : 'text-red-600'}`}>
+            <span className={`text-[12px] ${testResult.ok ? 'text-emerald-600' : 'text-red-600'}`}>
               {testResult.ok ? '✓ 连接成功' : `✕ ${testResult.error}`}
             </span>
           )}
@@ -118,7 +118,7 @@ export default function SettingsView() {
 
       <section className="panel mt-5 max-w-[720px] p-6">
         <h2 className="text-[15px] font-medium">写作</h2>
-        <label className="mt-3 flex cursor-pointer items-center gap-3 text-[13px]">
+        <label className="mt-3 flex cursor-pointer items-center gap-3 text-[14px]">
           <input
             type="checkbox"
             className="accent-amber-500"
@@ -140,10 +140,10 @@ export default function SettingsView() {
             <Database size={14} /> 立即备份数据库
           </button>
         </div>
-        <h3 className="mt-5 text-[12.5px] text-[var(--text-dim)]">导入存档（{archives.length} 份 · 原文可重放）</h3>
+        <h3 className="mt-5 text-[12px] text-[var(--text-dim)]">导入存档（{archives.length} 份 · 原文可重放）</h3>
         <div className="mt-2 max-h-[180px] space-y-1.5 overflow-y-auto">
           {archives.map((a) => (
-            <div key={a.id} className="rounded-lg border border-[var(--line)] px-3 py-2 text-[11.5px] text-[var(--text-dim)]">
+            <div key={a.id} className="rounded-lg border border-[var(--line)] px-3 py-2 text-[12px] text-[var(--text-dim)]">
               <span className="text-[var(--text)]">#{a.id}</span> · {a.created_at} · {a.stats}
             </div>
           ))}
@@ -153,10 +153,10 @@ export default function SettingsView() {
 
       <section className="panel mt-5 max-w-[720px] p-6">
         <h2 className="text-[15px] font-medium">关于</h2>
-        <div className="mt-3 space-y-1.5 text-[12.5px] leading-6 text-[var(--text-dim)]">
-          <div className="text-[13px] text-[var(--text)]">
+        <div className="mt-3 space-y-1.5 text-[12px] leading-6 text-[var(--text-dim)]">
+          <div className="text-[14px] text-[var(--text)]">
             <span className="star-mark mr-1.5">✦</span>摘星实录
-            <span className="ml-2 rounded border border-[var(--line)] px-1.5 py-0.5 text-[11px] tabular-nums">
+            <span className="ml-2 rounded border border-[var(--line)] px-1.5 py-0.5 text-[12px] tabular-nums">
               v{__APP_VERSION__}
             </span>
           </div>

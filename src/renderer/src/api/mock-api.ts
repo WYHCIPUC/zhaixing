@@ -42,6 +42,7 @@ function createMockApi(): ZhaixingApi {
             rating: 0,
             status: 'finished',
             short_review: '',
+            category: '',
             gem_highlight_id: null,
             created_at: now(),
             updated_at: now()

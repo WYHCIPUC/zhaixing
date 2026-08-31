@@ -11,6 +11,7 @@ export interface BookRecord {
   rating: number // 0-5，0=未评
   status: 'reading' | 'finished' | 'wishlist'
   short_review: string
+  category: string // 书架 AI 主题分区（v3）
   gem_highlight_id: number | null // 镇星之宝
   chapter_count?: number | null
   reading_progress?: number | null
@@ -110,6 +111,9 @@ export interface OverviewStats {
   thoughtCount: number
   tagCount: number
   archiveCount: number
+  readingCount: number // 在读
+  finishedCount: number // 已读完
+  weeklyStars: number // 近 7 天新增划线
 }
 
 // ---------- AI ----------
@@ -244,6 +248,35 @@ export interface WereadNotebook {
   sort: number
 }
 
+export interface WikiPageSummary {
+  id: number
+  page_type: 'book' | 'concept' | 'comparison' | 'synthesis'
+  ref_id: number
+  title: string
+  compiled_at: string
+}
+
+export interface WikiPageFull extends WikiPageSummary {
+  body_md: string
+  links: string[]
+  backlinks: { id: number; title: string; page_type: WikiPageSummary['page_type'] }[]
+}
+
+export interface WikiCompileReport {
+  books: number
+  concepts: number
+  comparisons: number
+  synthesis: number
+  compiled: number
+  skipped: number
+}
+
+export interface WikiExportReport {
+  dir: string
+  files: number
+  failed: string[]
+}
+
 export interface StarContext {
   chapter_index: number
   chapter_total: number | null
@@ -271,6 +304,7 @@ export interface StarPatch {
 }
 
 export interface BookPatch {
+  category?: string
   title?: string
   author?: string
   color?: string
@@ -319,11 +353,21 @@ export interface ZhaixingApi {
   createLink(fromId: number, toId: number, note: string): Promise<void>
   deleteLink(id: number): Promise<void>
   runAiAnalysis(): Promise<AiRunReport>
+  classifyBooks(): Promise<{ categories: { name: string; count: number }[] }>
   pickGems(): Promise<number>
   bumpRevisit(starId: number): Promise<void>
   topRevisited(limit: number): Promise<HighlightRecord[]>
 
   // 重逢
+  // 群星（wiki）
+  wikiCompile(): Promise<WikiCompileReport>
+  wikiList(): Promise<WikiPageSummary[]>
+  wikiGet(id: number): Promise<WikiPageFull | null>
+  wikiGetByTitle(title: string): Promise<WikiPageFull | null>
+  wikiExport(): Promise<WikiExportReport>
+  wikiSetAutoExport(on: boolean): Promise<void>
+  wikiGetAutoExport(): Promise<boolean>
+
   getMeteor(): Promise<MeteorToday>
   markMeteorRevisited(logId: number): Promise<void>
   createCapsule(starId: number, deliverAt: string, message: string): Promise<void>
