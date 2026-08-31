@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   renderBookPage,
   renderComparisonPage,
+  renderComparisonPairPage,
   renderConceptPage,
   renderSynthesisPage
 } from './render'
@@ -118,5 +119,27 @@ describe('renderSynthesisPage', () => {
     expect(p.body_md).toContain('[[际遇]]')
     expect(p.body_md).toContain('第 2 版')
     expect(p.links).toEqual(['际遇'])
+  })
+})
+
+describe('renderComparisonPairPage', () => {
+  it('同一对书多对共鸣合并一页，编号分节', () => {
+    const p = renderComparisonPairPage(1, '荀子', '剑来', [
+      { kind: 'twin', note: '', a: { chapter: '修身', content: '志意修则骄富贵' }, b: { chapter: '八百九', content: '志意修，则骄富贵' } },
+      { kind: 'twin', note: '', a: { chapter: '荣辱', content: '自知者不怨人' }, b: { chapter: '九百九', content: '即心即佛，莫向外求' } }
+    ])
+    expect(p.title).toBe('荀子 · 剑来')
+    expect(p.body_md).toContain('跨书共鸣（2 对）')
+    expect(p.body_md).toContain('### 第 1 对')
+    expect(p.body_md).toContain('### 第 2 对')
+    expect(p.links).toEqual(['荀子', '剑来'])
+  })
+
+  it('含对撞时头部标注对撞数', () => {
+    const p = renderComparisonPairPage(2, 'A', 'B', [
+      { kind: 'collision', note: '珍惜观相反', a: { chapter: '', content: 'x' }, b: { chapter: '', content: 'y' } }
+    ])
+    expect(p.body_md).toContain('观点对撞（1 处）')
+    expect(p.body_md).toContain('珍惜观相反')
   })
 })

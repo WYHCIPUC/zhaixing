@@ -105,6 +105,8 @@ export async function classifyBooks(
 // 集群 0.62 ≈ 中位可入簇；双星 0.68 ≈ 前 10% 强共鸣；对撞带 0.50–0.68 为主张相近但相异的区间
 const CLUSTER_SIM = 0.62
 const TWIN_SIM = 0.68
+// 相似度 ≥70% 自动连线，不再人工盖章（用户规则 2026-08-31）；0.68–0.70 为边缘带留审核
+const TWIN_AUTO_CONFIRM = 0.7
 const COLLISION_SIM_MIN = 0.5
 const COLLISION_SIM_MAX = 0.68
 
@@ -228,7 +230,9 @@ async function suggestTwins(db: DB, report: AiRunReport): Promise<void> {
   )
   const pairs = findSimilarPairs(embeddings, bookOf, TWIN_SIM, 1.01, 300)
   for (const p of pairs) {
-    const r = upsertLink(db, p.a, p.b, 'twin', 'suggested', '', p.sim)
+    // 相似度 ≥70% 自动连线（用户规则）；0.68–0.70 边缘带留人工审核
+    const status = p.sim >= TWIN_AUTO_CONFIRM ? 'confirmed' : 'suggested'
+    const r = upsertLink(db, p.a, p.b, 'twin', status, '', p.sim)
     if (r.added) report.twins++
   }
 }

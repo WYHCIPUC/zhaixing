@@ -120,6 +120,50 @@ export function renderComparisonPage(
   }
 }
 
+// 同一对书的多条共鸣/对撞合并为一页（标题唯一，避免同名页与导出覆盖）
+export interface ComparisonPairItem {
+  kind: 'twin' | 'collision' | 'manual'
+  note: string
+  a: { chapter: string; content: string }
+  b: { chapter: string; content: string }
+}
+
+export function renderComparisonPairPage(
+  refId: number,
+  bookA: string,
+  bookB: string,
+  pairs: ComparisonPairItem[]
+): RenderedPage {
+  const collisions = pairs.filter((p) => p.kind === 'collision')
+  const head =
+    collisions.length > 0
+      ? `> [!warning] 观点对撞（${collisions.length} 处）`
+      : `> [!quote] 跨书共鸣（${pairs.length} 对）`
+  const lines: string[] = [head, '']
+  pairs.forEach((p, i) => {
+    if (pairs.length > 1) lines.push(`### 第 ${i + 1} 对${p.kind === 'collision' ? ' · 对撞' : ''}`)
+    if (p.note) lines.push('', `*${p.note.replace(/\n/g, ' ')}*`)
+    lines.push('')
+    lines.push(`**[[${bookA}]]**`)
+    lines.push('')
+    lines.push(`> ${p.a.content.replace(/\n/g, '\n> ')}`)
+    if (p.a.chapter) lines.push(`> > —— ${p.a.chapter}`)
+    lines.push('')
+    lines.push(`**[[${bookB}]]**`)
+    lines.push('')
+    lines.push(`> ${p.b.content.replace(/\n/g, '\n> ')}`)
+    if (p.b.chapter) lines.push(`> > —— ${p.b.chapter}`)
+    lines.push('')
+  })
+  return {
+    page_type: 'comparison',
+    ref_id: refId,
+    title: `${bookA} · ${bookB}`,
+    body_md: lines.join('\n').trim(),
+    links: [bookA, bookB]
+  }
+}
+
 // ---------- 综合页（article → synthesis） ----------
 
 export function renderSynthesisPage(

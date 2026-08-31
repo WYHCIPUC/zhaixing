@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto'
 import type { DB } from '../db/connection'
 import {
   renderBookPage,
-  renderComparisonPage,
+  renderComparisonPairPage,
   renderConceptPage,
   renderSynthesisPage,
   type RenderedPage
@@ -97,22 +97,46 @@ export function compileWiki(db: DB): CompileReport {
     upsert(db, renderConceptPage(neb, [...byBook.values()])) ? report.compiled++ : report.skipped++
   }
 
-  // 3. 对比页：已确认连线（twin/collision/manual）
+  // 3. 对比页：已确认连线，同一对书合并为一页（标题唯一，避免导出覆盖）
   const links = db
-    .prepare(`SELECT * FROM links WHERE status = 'confirmed'`)
+    .prepare(`SELECT * FROM links WHERE status = 'confirmed' ORDER BY id`)
     .all() as { id: number; kind: 'twin' | 'collision' | 'manual'; note: string; from_highlight: number; to_highlight: number }[]
+  const byPair = new Map<string, { refId: number; a: { id: number; title: string }; b: { id: number; title: string }; pairs: { kind: 'twin' | 'collision' | 'manual'; note: string; a: { chapter: string; content: string }; b: { chapter: string; content: string } }[] }>()
   for (const l of links) {
     const sides = [l.from_highlight, l.to_highlight].map((hid) =>
       db
         .prepare(
-          `SELECT h.content, h.chapter, b.title AS book_title FROM highlights h JOIN books b ON b.id = h.book_id WHERE h.id = ?`
+          `SELECT h.content, h.chapter, b.id AS book_id, b.title AS book_title FROM highlights h JOIN books b ON b.id = h.book_id WHERE h.id = ?`
         )
-        .get(hid) as { content: string; chapter: string; book_title: string }
+        .get(hid) as { content: string; chapter: string; book_id: number; book_title: string }
     )
     if (!sides[0] || !sides[1]) continue
+    // 规范方向：小 id 在前，保证同一对书聚合
+    const [x, y] = sides[0].book_id <= sides[1].book_id ? [sides[0], sides[1]] : [sides[1], sides[0]]
+    const key = `${x.book_id}-${y.book_id}`
+    if (!byPair.has(key)) {
+      byPair.set(key, {
+        refId: l.id,
+        a: { id: x.book_id, title: x.book_title },
+        b: { id: y.book_id, title: y.book_title },
+        pairs: []
+      })
+    }
+    byPair.get(key)!.pairs.push({
+      kind: l.kind,
+      note: l.note,
+      a: x.book_id === sides[0].book_id
+        ? { chapter: sides[0].chapter, content: sides[0].content }
+        : { chapter: sides[1].chapter, content: sides[1].content },
+      b: x.book_id === sides[0].book_id
+        ? { chapter: sides[1].chapter, content: sides[1].content }
+        : { chapter: sides[0].chapter, content: sides[0].content }
+    })
+  }
+  for (const [, g] of byPair) {
     report.comparisons++
-    keep.add(`comparison:${l.id}`)
-    upsert(db, renderComparisonPage(l, sides[0], sides[1])) ? report.compiled++ : report.skipped++
+    keep.add(`comparison:${g.refId}`)
+    upsert(db, renderComparisonPairPage(g.refId, g.a.title, g.b.title, g.pairs)) ? report.compiled++ : report.skipped++
   }
 
   // 4. 综合页：织星文章
