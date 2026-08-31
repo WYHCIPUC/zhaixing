@@ -18,6 +18,7 @@ import {
   listArchives,
   listBooks,
   listStars,
+  mergeBooks,
   mergeStars,
   overview,
   search,
@@ -107,6 +108,7 @@ export function registerIpc(): void {
   ipcMain.handle('books:get', (_e, id: number) => getBook(getDb(), id))
   ipcMain.handle('books:update', (_e, id: number, patch: BookPatch) => updateBook(getDb(), id, patch))
   ipcMain.handle('books:delete', (_e, id: number) => deleteBook(getDb(), id))
+  ipcMain.handle('books:merge', (_e, fromId: number, toId: number) => mergeBooks(getDb(), fromId, toId))
 
   // ---------- 星 ----------
   ipcMain.handle('stars:list', (_e, bookId: number) => listStars(getDb(), bookId))

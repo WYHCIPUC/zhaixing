@@ -5,6 +5,7 @@ import { listNotebooks, syncBook, wereadKey } from './sync/weread'
 import { getSettings } from './db/repo'
 import { runAnalysis } from './ai/pipeline'
 import { compileWiki } from './wiki/compiler'
+import { mergeBooks } from './db/repo'
 import { exportWiki } from './wiki/exporter'
 import { isAiConfigured, type AiConfig } from '@shared/ai/client'
 
@@ -128,6 +129,24 @@ export async function runHeadlessWiki(): Promise<void> {
     app.exit(0)
   } catch (err) {
     console.error('[wiki] 失败：', err instanceof Error ? err.message : String(err))
+    closeDb()
+    app.exit(1)
+  }
+}
+
+// 无界面合并书目：ZHAIXING_MERGE=<fromId>:<toId> npx electron .（随后自动重编译群星）
+export async function runHeadlessMerge(): Promise<void> {
+  try {
+    const [from, to] = (process.env.ZHAIXING_MERGE ?? '').split(':').map(Number)
+    if (!from || !to) throw new Error('ZHAIXING_MERGE 应为 fromId:toId')
+    const r = mergeBooks(getDb(), from, to)
+    console.log(`[merge] 迁移 ${r.moved} 星 · 去重 ${r.deduped} · 想法挂接 ${r.thoughtsAttached}`)
+    const w = compileWiki(getDb())
+    console.log(`[merge] 群星重编译：${w.compiled} 新 / ${w.skipped} 跳过`)
+    closeDb()
+    app.exit(0)
+  } catch (err) {
+    console.error('[merge] 失败：', err instanceof Error ? err.message : String(err))
     closeDb()
     app.exit(1)
   }

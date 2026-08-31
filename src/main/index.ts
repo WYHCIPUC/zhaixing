@@ -17,7 +17,7 @@ app.setName('zhaixing')
 import path from 'node:path'
 import { backupDatabase, closeDb } from './db/connection'
 import { registerIpc } from './ipc'
-import { runHeadlessAi, runHeadlessSync, runHeadlessWiki } from './headless'
+import { runHeadlessAi, runHeadlessMerge, runHeadlessSync, runHeadlessWiki } from './headless'
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -68,6 +68,10 @@ app.whenReady().then(() => {
   }
   if (process.env.ZHAIXING_WIKI) {
     void runHeadlessWiki()
+    return
+  }
+  if (process.env.ZHAIXING_MERGE) {
+    void runHeadlessMerge()
     return
   }
   createWindow()

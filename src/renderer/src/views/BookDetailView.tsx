@@ -21,6 +21,11 @@ export default function BookDetailView({
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [mergeText, setMergeText] = useState<string | null>(null)
   const [reviewDraft, setReviewDraft] = useState<string | null>(null)
+  const [mergeOpen, setMergeOpen] = useState(false)
+  const [mergeInto, setMergeInto] = useState<number | null>(null)
+  const [mergeList, setMergeList] = useState<BookRecord[]>([])
+  const [mergeQ, setMergeQ] = useState('')
+  const [merging, setMerging] = useState(false)
   const [filter, setFilter] = useState<NoteFilter>('all')
   const [expanded, setExpanded] = useState<Set<string> | null>(null) // null = 尚未初始化
 
@@ -107,6 +112,31 @@ export default function BookDetailView({
   const exportBook = async (): Promise<void> => {
     const p = await window.api.exportMarkdown(bookId)
     if (p) toast.success('已导出 Markdown', { description: p })
+  }
+
+  const openMerge = async (): Promise<void> => {
+    const all = await window.api.listBooks()
+    setMergeList(all.filter((b) => b.id !== bookId))
+    setMergeInto(null)
+    setMergeQ('')
+    setMergeOpen(true)
+  }
+
+  const doMerge = async (): Promise<void> => {
+    if (!mergeInto) return
+    const target = mergeList.find((b) => b.id === mergeInto)?.title ?? ''
+    if (!confirm(`把当前书全部划线并入《${target}》？内容相同的划线自动去重，当前书将被移除。`)) return
+    setMerging(true)
+    try {
+      const r = await window.api.mergeBooks(bookId, mergeInto)
+      toast.success(`已并入《${target}》：迁移 ${r.moved} 星 · 去重 ${r.deduped} · 想法挂接 ${r.thoughtsAttached}`)
+      onChanged()
+      onBack()
+    } catch (err) {
+      toast.error('合并失败', { description: String(err) })
+    } finally {
+      setMerging(false)
+    }
   }
 
   const deleteBook = async (): Promise<void> => {
@@ -201,6 +231,9 @@ export default function BookDetailView({
             </button>
             <button className="btn" onClick={() => void exportBook()}>
               ⬇ 导出 Markdown
+            </button>
+            <button className="btn" onClick={() => void openMerge()} title="同一本书的重复条目并入另一本（去重合并）">
+              并入另一本…
             </button>
             <button className="btn btn-danger" onClick={() => void deleteBook()}>
               删除本书
@@ -405,6 +438,62 @@ export default function BookDetailView({
               </button>
               <button className="btn btn-primary" onClick={() => void confirmMerge()}>
                 确认合并
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* 并入另一本对话框 */}
+      {mergeOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#5b4a33]/30 backdrop-blur-sm"
+          onClick={() => setMergeOpen(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.96, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="panel flex max-h-[70vh] w-[480px] flex-col overflow-hidden p-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="border-b border-[var(--line)] px-5 py-3 text-[14px] font-medium">并入另一本书</div>
+            <div className="px-5 pt-3">
+              <input
+                className="input py-1 text-[12.5px]"
+                placeholder="搜索目标书名…"
+                value={mergeQ}
+                onChange={(e) => setMergeQ(e.target.value)}
+                autoFocus
+              />
+              <p className="mt-1.5 text-[11px] leading-5 text-[var(--text-dim)]">
+                当前书的划线与想法将并入所选书目；内容相同自动去重，连线与星云归属保持不变。
+              </p>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3">
+              {mergeList
+                .filter((b) => !mergeQ.trim() || b.title.toLowerCase().includes(mergeQ.trim().toLowerCase()))
+                .slice(0, 60)
+                .map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => setMergeInto(b.id)}
+                    className={`block w-full rounded-lg px-3 py-2 text-left text-[13px] transition-colors ${
+                      mergeInto === b.id ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'hover:bg-[var(--surface-2)]'
+                    }`}
+                  >
+                    <div className="truncate">{b.title}</div>
+                    <div className="text-[11px] text-[var(--text-dim)]">
+                      {b.author || '未知'} · ✦{b.highlight_count ?? 0}
+                    </div>
+                  </button>
+                ))}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-[var(--line)] px-5 py-3">
+              <button className="btn py-1" onClick={() => setMergeOpen(false)}>
+                取消
+              </button>
+              <button className="btn btn-primary py-1" disabled={!mergeInto || merging} onClick={() => void doMerge()}>
+                {merging ? '合并中…' : '确认并入'}
               </button>
             </div>
           </motion.div>

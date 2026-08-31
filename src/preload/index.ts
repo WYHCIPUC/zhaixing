@@ -11,6 +11,7 @@ const api = {
   getBook: (id: number) => ipcRenderer.invoke('books:get', id),
   updateBook: (id: number, patch: BookPatch) => ipcRenderer.invoke('books:update', id, patch),
   deleteBook: (id: number) => ipcRenderer.invoke('books:delete', id),
+  mergeBooks: (fromId: number, toId: number) => ipcRenderer.invoke('books:merge', fromId, toId),
 
   listStars: (bookId: number) => ipcRenderer.invoke('stars:list', bookId),
   getStar: (id: number) => ipcRenderer.invoke('stars:get', id),

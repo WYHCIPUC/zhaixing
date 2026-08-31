@@ -99,6 +99,62 @@ export function deleteBook(db: DB, id: number): void {
   db.prepare(`DELETE FROM books WHERE id = ?`).run(id)
 }
 
+// 合并书目：from 并入 to（同版本重复条目场景）
+// 内容相同 → 去重（想法挂到目标星）；不同 → 整星迁移（含想法/连线/星云归属，id 不变）
+export function mergeBooks(
+  db: DB,
+  fromId: number,
+  toId: number
+): { moved: number; deduped: number; thoughtsAttached: number } {
+  if (fromId === toId) throw new Error('不能并入自身')
+  const from = getBook(db, fromId)
+  const to = getBook(db, toId)
+  if (!from || !to) throw new Error('书不存在')
+  let moved = 0
+  let deduped = 0
+  let thoughtsAttached = 0
+  const tx = db.transaction(() => {
+    // 元信息：目标缺什么就从来源带什么
+    if (!to.short_review && from.short_review) {
+      updateBook(db, toId, { short_review: from.short_review })
+      to.short_review = from.short_review
+    }
+    if (to.rating === 0 && from.rating > 0) {
+      updateBook(db, toId, { rating: from.rating })
+      to.rating = from.rating
+    }
+    const stars = db
+      .prepare(`SELECT id, chapter, content FROM highlights WHERE book_id = ? ORDER BY chapter_order, id`)
+      .all(fromId) as { id: number; chapter: string; content: string }[]
+    for (const s of stars) {
+      const dup = db
+        .prepare(`SELECT id FROM highlights WHERE book_id = ? AND content = ? LIMIT 1`)
+        .get(toId, s.content) as { id: number } | undefined
+      if (dup) {
+        const movedThoughts = db
+          .prepare(`UPDATE thoughts SET highlight_id = ? WHERE highlight_id = ?`)
+          .run(dup.id, s.id)
+        thoughtsAttached += movedThoughts.changes
+        db.prepare(`DELETE FROM highlights_fts WHERE rowid = ?`).run(s.id)
+        db.prepare(`DELETE FROM highlights WHERE id = ?`).run(s.id)
+        if (movedThoughts.changes > 0) reindexStar(db, dup.id)
+        deduped++
+      } else {
+        db.prepare(`UPDATE highlights SET book_id = ?, content_hash = ? WHERE id = ?`).run(
+          toId,
+          starHash(toId, s.chapter, s.content),
+          s.id
+        )
+        reindexStar(db, s.id)
+        moved++
+      }
+    }
+    db.prepare(`DELETE FROM books WHERE id = ?`).run(fromId)
+  })
+  tx()
+  return { moved, deduped, thoughtsAttached }
+}
+
 // ---------- 星（划线） ----------
 
 interface StarRow {

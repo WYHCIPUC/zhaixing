@@ -325,6 +325,7 @@ export interface ZhaixingApi {
   getBook(id: number): Promise<BookRecord | null>
   updateBook(id: number, patch: BookPatch): Promise<void>
   deleteBook(id: number): Promise<void>
+  mergeBooks(fromId: number, toId: number): Promise<{ moved: number; deduped: number; thoughtsAttached: number }>
 
   // 星（划线）
   listStars(bookId: number): Promise<HighlightRecord[]>
